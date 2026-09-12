@@ -56,7 +56,8 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
 
     const displayDest = valid[0]?.dest_tc || item.dest;
 
-    const etas = valid.slice(0, 2).map((i: any) => {
+    // 攞齊最多 3 個班次
+    const etas = valid.slice(0, 3).map((i: any) => {
       const etaTime = new Date(i.eta);
       const diff = Math.round((etaTime.getTime() - now) / 60000);
       const timeStr = etaTime.toLocaleTimeString('zh-HK', {
@@ -65,7 +66,7 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
         hour: '2-digit',
         minute: '2-digit'
       });
-      const minsText = diff <= 0 ? '即到' : `${diff}分鐘`;
+      const minsText = diff <= 0 ? '即到' : `${diff}分`;
       return `${minsText} [${timeStr}]`;
     });
 
@@ -78,12 +79,11 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
 export async function GET() {
   const now = new Date();
   
-  // 準確抓取香港時區的月、日、星期
   const hkDateStr = now.toLocaleDateString('zh-HK', {
     timeZone: 'Asia/Hong_Kong',
     month: 'numeric',
     day: 'numeric'
-  }); // 格式為 9/12
+  });
   const [month, day] = hkDateStr.split('/');
   
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -103,7 +103,6 @@ export async function GET() {
     Promise.all(KWONG_CHING_CONFIG.map(getEta))
   ]);
 
-  // 天氣圖標
   let weatherSvg = '';
   if (weather.weatherType === 'sun') {
     weatherSvg = `
@@ -133,47 +132,49 @@ export async function GET() {
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- 頂部 Header：日期與星期 (左) | 天氣與溫度 (中) | 當前時間 (右) -->
+    <!-- Header -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
-      
       ${weatherSvg}
       <text x="785" y="125" font-size="76" font-family="sans-serif" font-weight="900" fill="#000000">${weather.temp}</text>
-      
       <text x="1390" y="125" font-size="88" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${timeStr}</text>
       <line x1="50" y1="170" x2="1390" y2="170" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (簡約黑標題) -->
+    <!-- 康栢苑 -->
     <rect x="50" y="215" width="220" height="66" rx="12" fill="#000000" />
     <text x="160" y="260" font-size="38" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">康栢苑</text>
 
     ${hpData.map((item, idx) => {
       const y = 360 + idx * 110;
-      const firstEta = item.etas[0] || '未有班次';
-      const secondEta = item.etas[1] ? `下班 ${item.etas[1]}` : '';
+      const eta1 = item.etas[0] || '未有班次';
+      const eta2 = item.etas[1] || '';
+      const eta3 = item.etas[2] || '';
       return `
         <text x="50" y="${y}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="240" y="${y - 4}" font-size="34" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
-        <text x="980" y="${y}" font-size="44" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${firstEta}</text>
-        <text x="1390" y="${y}" font-size="30" font-family="sans-serif" fill="#666666" text-anchor="end">${secondEta}</text>
+        <text x="230" y="${y - 4}" font-size="32" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
+        <text x="800" y="${y}" font-size="40" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <text x="1100" y="${y}" font-size="32" font-family="sans-serif" fill="#555555" text-anchor="end">${eta2}</text>
+        <text x="1390" y="${y}" font-size="28" font-family="sans-serif" fill="#888888" text-anchor="end">${eta3}</text>
         <line x1="50" y1="${y + 35}" x2="1390" y2="${y + 35}" stroke="#eeeeee" stroke-width="3" />
       `;
     }).join('')}
 
-    <!-- 區域二：廣田邨廣靖樓 (簡約黑標題) -->
+    <!-- 廣田邨廣靖樓 -->
     <rect x="50" y="1055" width="340" height="66" rx="12" fill="#000000" />
     <text x="220" y="1100" font-size="38" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">廣田邨廣靖樓</text>
 
     ${kcData.map((item, idx) => {
       const y = 1200 + idx * 110;
-      const firstEta = item.etas[0] || '未有班次';
-      const secondEta = item.etas[1] ? `下班 ${item.etas[1]}` : '';
+      const eta1 = item.etas[0] || '未有班次';
+      const eta2 = item.etas[1] || '';
+      const eta3 = item.etas[2] || '';
       return `
         <text x="50" y="${y}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="240" y="${y - 4}" font-size="34" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
-        <text x="980" y="${y}" font-size="44" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${firstEta}</text>
-        <text x="1390" y="${y}" font-size="30" font-family="sans-serif" fill="#666666" text-anchor="end">${secondEta}</text>
+        <text x="230" y="${y - 4}" font-size="32" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
+        <text x="800" y="${y}" font-size="40" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <text x="1100" y="${y}" font-size="32" font-family="sans-serif" fill="#555555" text-anchor="end">${eta2}</text>
+        <text x="1390" y="${y}" font-size="28" font-family="sans-serif" fill="#888888" text-anchor="end">${eta3}</text>
         <line x1="50" y1="${y + 35}" x2="1390" y2="${y + 35}" stroke="#eeeeee" stroke-width="3" />
       `;
     }).join('')}
