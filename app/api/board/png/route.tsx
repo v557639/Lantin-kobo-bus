@@ -1,67 +1,40 @@
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-import sharp from 'sharp';
-import fs from 'fs';
-import path from 'path';
-
-// 緩存讀取咗嘅字體，唔使每次 request 都讀碟
-let cachedFontBase64 = '';
-
-function getLocalFontBase64(): string {
-  if (cachedFontBase64) return cachedFontBase64;
-  // 直接讀取擺喺同一個資料夾嘅 font.ttf
-  const fontPath = path.join(process.cwd(), 'app/api/board/png/font.ttf');
-  const fontBuffer = fs.readFileSync(fontPath);
-  cachedFontBase64 = fontBuffer.toString('base64');
-  return cachedFontBase64;
-}
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const svgUrl = `${url.origin}/api/board`;
 
-    // 1. 抓取 SVG 內容
+    // 抓取原本的 SVG
     const svgRes = await fetch(svgUrl, { cache: 'no-store' });
-    if (!svgRes.ok) {
-      throw new Error(`Failed to fetch SVG: ${svgRes.statusText}`);
+    const svgText = await svgRes.text();
+
+    // 叫專門處理 SVG 轉 PNG 的雲端引擎 (自帶全套 Noto CJK 中文字體) 轉成 1440x1920
+    const renderRes = await fetch('https://svg-to-image.vercel.app/api/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        svg: svgText,
+        width: 1440,
+        height: 1920,
+        format: 'png',
+      }),
+    });
+
+    if (!renderRes.ok) {
+      // 備用方案：如果外網代理失敗，直接回傳
+      throw new Error('Render failed');
     }
-    let svgText = await svgRes.text();
 
-    // 2. 注入本地 TTF 字體樣式進 SVG
-    const fontBase64 = getLocalFontBase64();
-    const fontStyle = `
-      <style>
-        @font-face {
-          font-family: 'LocalNoto';
-          src: url('data:font/truetype;charset=utf-8;base64,${fontBase64}') format('truetype');
-          font-weight: normal;
-          font-style: normal;
-        }
-        text, tspan {
-          font-family: 'LocalNoto', sans-serif !important;
-        }
-      </style>
-    `;
+    const pngBuffer = await renderRes.arrayBuffer();
 
-    // 插入到 <svg ...> 標籤後
-    svgText = svgText.replace(/(<svg[^>]*>)/i, `$1${fontStyle}`);
-
-    // 3. 用 sharp 轉成 1440x1920 高清 PNG
-    const pngBuffer = await sharp(Buffer.from(svgText))
-      .resize(1440, 1920)
-      .png()
-      .toBuffer();
-
-    return new Response(pngBuffer as any, {
+    return new Response(pngBuffer, {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'no-store, max-age=0',
       },
     });
   } catch (err: any) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return new Response(`Error: ${msg}`, { status: 500 });
+    return new Response(`Error: ${err.message}`, { status: 500 });
   }
 }
