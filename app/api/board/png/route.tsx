@@ -2,17 +2,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { Resvg } from '@resvg/resvg-js';
-import fs from 'fs';
 import path from 'path';
-
-let fontBufferCache: Buffer | null = null;
-
-function getFontBuffer(): Buffer {
-  if (fontBufferCache) return fontBufferCache;
-  const fontPath = path.join(process.cwd(), 'app', 'api', 'board', 'png', 'font.ttf');
-  fontBufferCache = fs.readFileSync(fontPath);
-  return fontBufferCache;
-}
 
 export async function GET(request: Request) {
   try {
@@ -26,17 +16,17 @@ export async function GET(request: Request) {
     }
     const svgText = await svgRes.text();
 
-    // 2. 讀取本地 font.ttf
-    const fontBuffer = getFontBuffer();
+    // 2. 定位字體檔案絕對路徑
+    const fontPath = path.join(process.cwd(), 'app', 'api', 'board', 'png', 'font.ttf');
 
-    // 3. 用 Resvg 渲染
+    // 3. 用 Resvg 渲染，直接將 fontFiles 指向字體檔案
     const resvg = new Resvg(svgText, {
       fitTo: {
         mode: 'width',
         value: 1440,
       },
       font: {
-        fontBuffers: [fontBuffer],
+        fontFiles: [fontPath],
         loadSystemFonts: false,
       },
     });
@@ -50,7 +40,7 @@ export async function GET(request: Request) {
         'Cache-Control': 'no-store, max-age=0',
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('PNG error:', msg);
     return new Response(`Error: ${msg}`, { status: 500 });
