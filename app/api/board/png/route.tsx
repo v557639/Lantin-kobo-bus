@@ -2,14 +2,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
-import { GET as getSvgResponse } from '../route';
 
-// 確保 WASM 模組只初始化一次
 let wasmInitialized = false;
 
 async function ensureWasm() {
   if (!wasmInitialized) {
-    // 自動從 CDN 載入輕量 WASM 核心，Vercel 完美支援
     const wasmUrl = 'https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm';
     const response = await fetch(wasmUrl);
     const wasmBuffer = await response.arrayBuffer();
@@ -18,12 +15,18 @@ async function ensureWasm() {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await ensureWasm();
 
-    // 1. 抓取 SVG 內容
-    const svgRes = await getSvgResponse();
+    // 1. 動態取得當前主機網址，直接呼叫原本的 SVG API
+    const url = new URL(request.url);
+    const svgUrl = `${url.origin}/api/board`;
+    
+    const svgRes = await fetch(svgUrl, { cache: 'no-store' });
+    if (!svgRes.ok) {
+      throw new Error(`Failed to fetch SVG: ${svgRes.statusText}`);
+    }
     const svgText = await svgRes.text();
 
     // 2. 轉成 1440x1920 高清 PNG
