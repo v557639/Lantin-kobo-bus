@@ -130,7 +130,7 @@ export async function GET() {
     `;
   }
 
-  // 繪製單個巴士區域（優化班次 1/2/3 寬度比例）
+  // 繪製單個巴士區域（大幅向右平移班次分隔線）
   const renderSection = (title: string, width: number, data: any[], startY: number) => {
     const rowHeight = 112;
     return `
@@ -155,23 +155,23 @@ export async function GET() {
           <!-- 目的地 -->
           <text x="260" y="${textY - 4}" font-size="35" font-family="sans-serif" font-weight="bold" fill="#333333">往 ${item.dest}</text>
           
-          <!-- 垂直分界線 1：目的地與第一班次之間 -->
-          <line x1="590" y1="${rowTop + 14}" x2="590" y2="${rowTop + rowHeight - 14}" stroke="#d0d0d0" stroke-width="2" />
+          <!-- 垂直分界線 1：目的地與第一班次之間 (x=600) -->
+          <line x1="600" y1="${rowTop + 14}" x2="600" y2="${rowTop + rowHeight - 14}" stroke="#d0d0d0" stroke-width="2" />
 
-          <!-- 第一班次 (醒目大黑體，向右騰出充足空間到 870) -->
-          <text x="870" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+          <!-- 第一班次 (醒目大黑體，空間闊達 310px，對齊至 910) -->
+          <text x="910" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
           
-          <!-- 垂直分界線 2：第一與第二班次之間 (右移至 900) -->
-          <line x1="900" y1="${rowTop + 18}" x2="900" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
+          <!-- 垂直分界線 2：第一與第二班次之間 (大幅右移至 940) -->
+          <line x1="940" y1="${rowTop + 18}" x2="940" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
 
-          <!-- 第二班次 (右移至 1140) -->
-          <text x="1140" y="${textY}" font-size="33" font-family="sans-serif" fill="#444444" text-anchor="end">${eta2}</text>
+          <!-- 第二班次 (右移至 1160) -->
+          <text x="1160" y="${textY}" font-size="32" font-family="sans-serif" fill="#444444" text-anchor="end">${eta2}</text>
           
-          <!-- 垂直分界線 3：第二與第三班次之間 (右移至 1165) -->
-          <line x1="1165" y1="${rowTop + 18}" x2="1165" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
+          <!-- 垂直分界線 3：第二與第三班次之間 (右移至 1180) -->
+          <line x1="1180" y1="${rowTop + 18}" x2="1180" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
 
-          <!-- 第三班次 (右移貼齊 1385) -->
-          <text x="1385" y="${textY}" font-size="29" font-family="sans-serif" fill="#777777" text-anchor="end">${eta3}</text>
+          <!-- 第三班次 (右移貼齊 1380) -->
+          <text x="1380" y="${textY}" font-size="28" font-family="sans-serif" fill="#777777" text-anchor="end">${eta3}</text>
           
           <!-- 底線 -->
           <line x1="50" y1="${rowTop + rowHeight}" x2="1390" y2="${rowTop + rowHeight}" stroke="#e8e8e8" stroke-width="2" />
