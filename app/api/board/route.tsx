@@ -9,17 +9,17 @@ const HONG_PAK_PRIMARY = [
   { route: '603', dest: '平田', dir: 'I' },
 ];
 
-// 康栢苑其他（雙欄顯示：湊齊 8 條巴士及小巴）
+// 康栢苑其他（小巴站點精準鎖定 stopSeq）
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '613', dest: '安泰', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
-  { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001486' },
-  // 綠色專線小巴 (GMB)
-  { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63' },
-  { route: '87', dest: '九龍灣(麗晶)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '87' },
-  { route: '117B', dest: '安達臣(安愉道)', operator: 'gmb', gmbRegion: 'NT', gmbRoute: '117B' },
+  { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001713' }, // 龍栢閣站
+  // 綠色專線小巴 (GMB) - 指定站點
+  { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
+  { route: '87', dest: '九龍灣(麗晶)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '87', routeSeq: 1, stopSeq: 7 },
+  { route: '117B', dest: '安達臣(安愉道)', operator: 'gmb', gmbRegion: 'NT', gmbRoute: '117B', routeSeq: 1, stopSeq: 25 },
 ];
 
 // 廣田邨廣靖樓主力
@@ -64,7 +64,7 @@ async function getEta(item: any) {
   try {
     const now = Date.now();
 
-    // 1. 城巴 API (Citybus)
+    // 1. 城巴 API (Citybus - 001713 龍栢閣)
     if (item.operator === 'ctb' && item.stopId) {
       const res = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stopId}/${item.route}`, {
         cache: 'no-store'
@@ -89,7 +89,7 @@ async function getEta(item: any) {
       return { route: item.route, dest: valid[0]?.dest_tc || item.dest, etas };
     }
 
-    // 2. 運輸署綠色專線小巴 API (GMB)
+    // 2. 綠色專線小巴 API (GMB - 鎖定 routeSeq 與指定 stopSeq)
     if (item.operator === 'gmb') {
       try {
         const routeRes = await fetch(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`, {
@@ -99,8 +99,9 @@ async function getEta(item: any) {
         const routeId = routeJson?.data?.[0]?.route_id;
 
         if (routeId) {
-          // 抓取小巴分段/車站 ETA
-          const etaRes = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/1/1`, {
+          const rSeq = item.routeSeq || 1;
+          const sSeq = item.stopSeq || 1;
+          const etaRes = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`, {
             cache: 'no-store'
           });
           const etaJson = await etaRes.json();
@@ -108,7 +109,7 @@ async function getEta(item: any) {
           const etas = list.filter((i: any) => i.timestamp && new Date(i.timestamp).getTime() > now)
             .slice(0, 3)
             .map((i: any) => {
-              const diff = i.diff || Math.round((new Date(i.timestamp).getTime() - now) / 60000);
+              const diff = i.diff !== undefined ? i.diff : Math.round((new Date(i.timestamp).getTime() - now) / 60000);
               const timeStr = new Date(i.timestamp).toLocaleTimeString('zh-HK', {
                 timeZone: 'Asia/Hong_Kong',
                 hour12: false,
@@ -118,7 +119,7 @@ async function getEta(item: any) {
               const minsText = diff <= 0 ? '即到' : `${diff}分`;
               return `${minsText} [${timeStr}]`;
             });
-          if (etas.length > 0) return { route: item.route, dest: item.dest, etas, isGmb: true };
+          return { route: item.route, dest: item.dest, etas, isGmb: true };
         }
       } catch {}
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
@@ -262,7 +263,7 @@ export async function GET() {
     `;
     curY += 28;
 
-    // 其他路線：雙欄渲染 (8條剛好4行，乾淨對稱)
+    // 其他路線雙欄 (8 條恰好 4 行)
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -276,7 +277,7 @@ export async function GET() {
       const leftEta = leftItem?.etas[0] || '未有班次';
       const leftBadge = leftItem?.isGmb ? `<rect x="68" y="${rowTop + 18}" width="34" height="22" rx="4" fill="#000000" /><text x="85" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
       const leftRouteX = leftItem?.isGmb ? '112' : '70';
-      
+
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="34" font-family="sans-serif" font-weight="900" fill="#444444">${leftItem.route}</text>
@@ -284,7 +285,7 @@ export async function GET() {
         <text x="680" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${leftEta}</text>
       ` : '';
 
-      // 中間垂直線
+      // 中間垂直分隔線
       const midLine = `<line x1="720" y1="${rowTop + 10}" x2="720" y2="${rowTop + secRowH - 10}" stroke="#e0e0e0" stroke-width="2" />`;
 
       // 右欄
@@ -311,7 +312,7 @@ export async function GET() {
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- Header -->
+    <!-- 頂部 Header -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
       ${weatherSvg}
@@ -323,8 +324,8 @@ export async function GET() {
     <!-- 區域一：康栢苑 (主力 5 條 + 備用 8 條雙欄) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點微調至 Y=1120，避開上方 4 行雙欄) -->
-    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1120)}
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1140) -->
+    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1140)}
   </svg>
   `;
 
