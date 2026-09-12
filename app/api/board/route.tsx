@@ -1,23 +1,22 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (5 條巴士)
+// 康栢苑主力 (6 條：小巴 63 霸氣升格，鎖定第 3 站祥栢閣)
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', dir: 'O' },
   { route: '16X', dest: '旺角(柏景灣)', dir: 'O' },
   { route: '215X', dest: '九龍站', dir: 'O' },
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
   { route: '603', dest: '平田', dir: 'I' },
+  { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他（小巴站點精準鎖定 stopSeq）
+// 康栢苑其他 (7 條：雙欄排列)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '613', dest: '安泰', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
-  { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001713' }, // 龍栢閣站
-  // 綠色專線小巴 (GMB) - 指定站點
-  { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
+  { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001713' },
   { route: '87', dest: '九龍灣(麗晶)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '87', routeSeq: 1, stopSeq: 7 },
   { route: '117B', dest: '安達臣(安愉道)', operator: 'gmb', gmbRegion: 'NT', gmbRoute: '117B', routeSeq: 1, stopSeq: 25 },
 ];
@@ -64,7 +63,7 @@ async function getEta(item: any) {
   try {
     const now = Date.now();
 
-    // 1. 城巴 API (Citybus - 001713 龍栢閣)
+    // 1. 城巴 API (Citybus)
     if (item.operator === 'ctb' && item.stopId) {
       const res = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stopId}/${item.route}`, {
         cache: 'no-store'
@@ -89,7 +88,7 @@ async function getEta(item: any) {
       return { route: item.route, dest: valid[0]?.dest_tc || item.dest, etas };
     }
 
-    // 2. 綠色專線小巴 API (GMB - 鎖定 routeSeq 與指定 stopSeq)
+    // 2. 綠色專線小巴 API (GMB)
     if (item.operator === 'gmb') {
       try {
         const routeRes = await fetch(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`, {
@@ -216,31 +215,35 @@ export async function GET() {
   }
 
   const renderArea = (title: string, width: number, priData: any[], secData: any[], startY: number) => {
-    const priRowH = 104;
-    const secRowH = 68;
+    const priRowH = 100;
+    const secRowH = 66;
     let curY = startY;
 
     // 分區黑標題
     const titleSvg = `
-      <rect x="50" y="${curY}" width="${width}" height="58" rx="10" fill="#000000" />
-      <text x="${50 + width / 2}" y="${curY + 41}" font-size="34" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">${title}</text>
+      <rect x="50" y="${curY}" width="${width}" height="56" rx="10" fill="#000000" />
+      <text x="${50 + width / 2}" y="${curY + 40}" font-size="34" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">${title}</text>
     `;
-    curY += 72;
+    curY += 68;
 
     // 主力常搭路線
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
-      const textY = rowTop + 66;
+      const textY = rowTop + 64;
       const isOdd = idx % 2 === 1;
       const bgRect = isOdd ? `<rect x="50" y="${rowTop}" width="1340" height="${priRowH}" fill="#f4f4f4" />` : '';
 
       const eta1 = item.etas[0] || '未有班次';
       const eta2 = item.etas[1] || '';
       const eta3 = item.etas[2] || '';
+      
+      const badge = item.isGmb ? `<rect x="58" y="${rowTop + 34}" width="42" height="24" rx="4" fill="#000000" /><text x="79" y="${rowTop + 51}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const routeX = item.isGmb ? '112' : '70';
 
       return `
         ${bgRect}
-        <text x="70" y="${textY}" font-size="52" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
+        ${badge}
+        <text x="${routeX}" y="${textY}" font-size="52" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
         <text x="260" y="${textY - 3}" font-size="34" font-family="sans-serif" font-weight="bold" fill="#222222">往 ${item.dest}</text>
         
         <line x1="600" y1="${rowTop + 14}" x2="600" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
@@ -263,19 +266,18 @@ export async function GET() {
     `;
     curY += 28;
 
-    // 其他路線雙欄 (8 條恰好 4 行)
+    // 其他路線雙欄
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
     for (let r = 0; r < numRows; r++) {
       const rowTop = curY + r * secRowH;
-      const textY = rowTop + 46;
+      const textY = rowTop + 45;
       const leftItem = secData[r * 2];
       const rightItem = secData[r * 2 + 1];
 
-      // 左欄
       const leftEta = leftItem?.etas[0] || '未有班次';
-      const leftBadge = leftItem?.isGmb ? `<rect x="68" y="${rowTop + 18}" width="34" height="22" rx="4" fill="#000000" /><text x="85" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const leftBadge = leftItem?.isGmb ? `<rect x="68" y="${rowTop + 17}" width="34" height="22" rx="4" fill="#000000" /><text x="85" y="${rowTop + 33}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
       const leftRouteX = leftItem?.isGmb ? '112' : '70';
 
       const leftCol = leftItem ? `
@@ -285,12 +287,10 @@ export async function GET() {
         <text x="680" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${leftEta}</text>
       ` : '';
 
-      // 中間垂直分隔線
       const midLine = `<line x1="720" y1="${rowTop + 10}" x2="720" y2="${rowTop + secRowH - 10}" stroke="#e0e0e0" stroke-width="2" />`;
 
-      // 右欄
       const rightEta = rightItem?.etas[0] || (rightItem ? '未有班次' : '');
-      const rightBadge = rightItem?.isGmb ? `<rect x="758" y="${rowTop + 18}" width="34" height="22" rx="4" fill="#000000" /><text x="775" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const rightBadge = rightItem?.isGmb ? `<rect x="758" y="${rowTop + 17}" width="34" height="22" rx="4" fill="#000000" /><text x="775" y="${rowTop + 33}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
       const rightRouteX = rightItem?.isGmb ? '802' : '760';
 
       const rightCol = rightItem ? `
@@ -312,7 +312,7 @@ export async function GET() {
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- 頂部 Header -->
+    <!-- Header -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
       ${weatherSvg}
@@ -321,11 +321,11 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (主力 5 條 + 備用 8 條雙欄) -->
+    <!-- 區域一：康栢苑 (主力 6 條 + 備用 7 條雙欄) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1140) -->
-    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1140)}
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1210，完美收尾) -->
+    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1210)}
   </svg>
   `;
 
