@@ -2,61 +2,53 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
 
-// 緩存 TTF 字體 Base64，避免每次重拉
-let fontBase64Cache = '';
+// 緩存讀取咗嘅字體，唔使每次 request 都讀碟
+let cachedFontBase64 = '';
 
-async function getTtfFontBase64() {
-  if (fontBase64Cache) return fontBase64Cache;
-  // 直接從 Google Noto 官方倉庫拉取標準 TTF 格式繁體中文字體
-  const fontUrl = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Bold.otf';
-  const res = await fetch(fontUrl);
-  if (!res.ok) {
-    // 備用源：如果 GitHub raw 慢，直接走 jsdelivr CDN 的標準 TTF
-    const fallbackUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Bold.otf';
-    const fbRes = await fetch(fallbackUrl);
-    const fbBuffer = await fbRes.arrayBuffer();
-    fontBase64Cache = Buffer.from(fbBuffer).toString('base64');
-    return fontBase64Cache;
-  }
-  const buffer = await res.arrayBuffer();
-  fontBase64Cache = Buffer.from(buffer).toString('base64');
-  return fontBase64Cache;
+function getLocalFontBase64(): string {
+  if (cachedFontBase64) return cachedFontBase64;
+  // 直接讀取擺喺同一個資料夾嘅 font.ttf
+  const fontPath = path.join(process.cwd(), 'app/api/board/png/font.ttf');
+  const fontBuffer = fs.readFileSync(fontPath);
+  cachedFontBase64 = fontBuffer.toString('base64');
+  return cachedFontBase64;
 }
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const svgUrl = `${url.origin}/api/board`;
-    
-    // 1. 同步抓取 SVG 與字型
-    const [svgRes, fontBase64] = await Promise.all([
-      fetch(svgUrl, { cache: 'no-store' }),
-      getTtfFontBase64(),
-    ]);
 
+    // 1. 抓取 SVG 內容
+    const svgRes = await fetch(svgUrl, { cache: 'no-store' });
     if (!svgRes.ok) {
       throw new Error(`Failed to fetch SVG: ${svgRes.statusText}`);
     }
     let svgText = await svgRes.text();
 
-    // 2. 注入 @font-face (明確標明 format 為 opentype / truetype)
+    // 2. 注入本地 TTF 字體樣式進 SVG
+    const fontBase64 = getLocalFontBase64();
     const fontStyle = `
       <style>
         @font-face {
-          font-family: 'NotoSansTC';
-          src: url('data:font/otf;base64,${fontBase64}') format('opentype');
+          font-family: 'LocalNoto';
+          src: url('data:font/truetype;charset=utf-8;base64,${fontBase64}') format('truetype');
+          font-weight: normal;
+          font-style: normal;
         }
         text, tspan {
-          font-family: 'NotoSansTC', sans-serif !important;
+          font-family: 'LocalNoto', sans-serif !important;
         }
       </style>
     `;
 
-    // 插入到 <svg ...> 之後
+    // 插入到 <svg ...> 標籤後
     svgText = svgText.replace(/(<svg[^>]*>)/i, `$1${fontStyle}`);
 
-    // 3. 轉成 1440x1920 PNG
+    // 3. 用 sharp 轉成 1440x1920 高清 PNG
     const pngBuffer = await sharp(Buffer.from(svgText))
       .resize(1440, 1920)
       .png()
