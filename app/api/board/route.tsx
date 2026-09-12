@@ -56,7 +56,6 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
 
     const displayDest = valid[0]?.dest_tc || item.dest;
 
-    // 攞齊最多 3 個班次
     const etas = valid.slice(0, 3).map((i: any) => {
       const etaTime = new Date(i.eta);
       const diff = Math.round((etaTime.getTime() - now) / 60000);
@@ -79,12 +78,16 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
 export async function GET() {
   const now = new Date();
   
-  const hkDateStr = now.toLocaleDateString('zh-HK', {
+  // 徹底避免月日倒轉：用 Intl 直接解析年月日
+  const parts = new Intl.DateTimeFormat('zh-HK', {
     timeZone: 'Asia/Hong_Kong',
     month: 'numeric',
-    day: 'numeric'
-  });
-  const [month, day] = hkDateStr.split('/');
+    day: 'numeric',
+    weekday: 'short'
+  }).formatToParts(now);
+
+  const month = parts.find(p => p.type === 'month')?.value || '9';
+  const day = parts.find(p => p.type === 'day')?.value || '12';
   
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   const dayIndex = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' })).getDay();
@@ -128,11 +131,61 @@ export async function GET() {
     `;
   }
 
+  // 繪製單個巴士區域（含斑馬紋底色與垂直分界線）
+  const renderSection = (title: string, width: number, data: any[], startY: number) => {
+    const rowHeight = 112;
+    return `
+      <rect x="50" y="${startY}" width="${width}" height="66" rx="12" fill="#000000" />
+      <text x="${50 + width / 2}" y="${startY + 45}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">${title}</text>
+
+      ${data.map((item, idx) => {
+        const rowTop = startY + 90 + idx * rowHeight;
+        const textY = rowTop + 68;
+        const isOdd = idx % 2 === 1;
+        const bgRect = isOdd ? `<rect x="50" y="${rowTop}" width="1340" height="${rowHeight}" fill="#f2f2f2" />` : '';
+
+        const eta1 = item.etas[0] || '未有班次';
+        const eta2 = item.etas[1] || '';
+        const eta3 = item.etas[2] || '';
+
+        return `
+          ${bgRect}
+          <!-- 路線號碼 (拉闊) -->
+          <text x="70" y="${textY}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
+          
+          <!-- 目的地 (間距拉大，字體加大) -->
+          <text x="260" y="${textY - 4}" font-size="35" font-family="sans-serif" font-weight="bold" fill="#333333">往 ${item.dest}</text>
+          
+          <!-- 垂直分界線 1：目的地與第一班次之間 -->
+          <line x1="590" y1="${rowTop + 14}" x2="590" y2="${rowTop + rowHeight - 14}" stroke="#d0d0d0" stroke-width="2" />
+
+          <!-- 第一班次 (醒目大黑體) -->
+          <text x="830" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+          
+          <!-- 垂直分界線 2：第一與第二班次之間 -->
+          <line x1="860" y1="${rowTop + 18}" x2="860" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
+
+          <!-- 第二班次 (間距緊湊) -->
+          <text x="1110" y="${textY}" font-size="34" font-family="sans-serif" fill="#444444" text-anchor="end">${eta2}</text>
+          
+          <!-- 垂直分界線 3：第二與第三班次之間 -->
+          <line x1="1140" y1="${rowTop + 18}" x2="1140" y2="${rowTop + rowHeight - 18}" stroke="#e0e0e0" stroke-width="2" />
+
+          <!-- 第三班次 (間距緊湊) -->
+          <text x="1370" y="${textY}" font-size="30" font-family="sans-serif" fill="#777777" text-anchor="end">${eta3}</text>
+          
+          <!-- 底線 -->
+          <line x1="50" y1="${rowTop + rowHeight}" x2="1390" y2="${rowTop + rowHeight}" stroke="#e8e8e8" stroke-width="2" />
+        `;
+      }).join('')}
+    `;
+  };
+
   const svg = `
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- Header -->
+    <!-- Header：日期與星期 (左) | 天氣與溫度 (中) | 當前時間 (右) -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
       ${weatherSvg}
@@ -141,43 +194,11 @@ export async function GET() {
       <line x1="50" y1="170" x2="1390" y2="170" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 康栢苑 -->
-    <rect x="50" y="215" width="220" height="66" rx="12" fill="#000000" />
-    <text x="160" y="260" font-size="38" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">康栢苑</text>
+    <!-- 區域一：康栢苑 (6 條線) -->
+    ${renderSection('康栢苑', 220, hpData, 205)}
 
-    ${hpData.map((item, idx) => {
-      const y = 360 + idx * 110;
-      const eta1 = item.etas[0] || '未有班次';
-      const eta2 = item.etas[1] || '';
-      const eta3 = item.etas[2] || '';
-      return `
-        <text x="50" y="${y}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="230" y="${y - 4}" font-size="32" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
-        <text x="800" y="${y}" font-size="40" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
-        <text x="1100" y="${y}" font-size="32" font-family="sans-serif" fill="#555555" text-anchor="end">${eta2}</text>
-        <text x="1390" y="${y}" font-size="28" font-family="sans-serif" fill="#888888" text-anchor="end">${eta3}</text>
-        <line x1="50" y1="${y + 35}" x2="1390" y2="${y + 35}" stroke="#eeeeee" stroke-width="3" />
-      `;
-    }).join('')}
-
-    <!-- 廣田邨廣靖樓 -->
-    <rect x="50" y="1055" width="340" height="66" rx="12" fill="#000000" />
-    <text x="220" y="1100" font-size="38" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">廣田邨廣靖樓</text>
-
-    ${kcData.map((item, idx) => {
-      const y = 1200 + idx * 110;
-      const eta1 = item.etas[0] || '未有班次';
-      const eta2 = item.etas[1] || '';
-      const eta3 = item.etas[2] || '';
-      return `
-        <text x="50" y="${y}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="230" y="${y - 4}" font-size="32" font-family="sans-serif" fill="#444444">往 ${item.dest}</text>
-        <text x="800" y="${y}" font-size="40" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
-        <text x="1100" y="${y}" font-size="32" font-family="sans-serif" fill="#555555" text-anchor="end">${eta2}</text>
-        <text x="1390" y="${y}" font-size="28" font-family="sans-serif" fill="#888888" text-anchor="end">${eta3}</text>
-        <line x1="50" y1="${y + 35}" x2="1390" y2="${y + 35}" stroke="#eeeeee" stroke-width="3" />
-      `;
-    }).join('')}
+    <!-- 區域二：廣田邨廣靖樓 (4 條線) -->
+    ${renderSection('廣田邨廣靖樓', 340, kcData, 1020)}
   </svg>
   `;
 
