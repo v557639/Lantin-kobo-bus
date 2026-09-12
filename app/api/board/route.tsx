@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (6 條：小巴 63 霸氣升格，鎖定第 3 站祥栢閣)
+// 康栢苑主力 (6 條：小巴 63 坐陣)
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', dir: 'O' },
   { route: '16X', dest: '旺角(柏景灣)', dir: 'O' },
@@ -10,7 +10,7 @@ const HONG_PAK_PRIMARY = [
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他 (7 條：雙欄排列)
+// 康栢苑其他 (8 條雙欄：加入 76A 鎖定第 2 站祥栢閣)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
@@ -19,6 +19,7 @@ const HONG_PAK_SECONDARY = [
   { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001713' },
   { route: '87', dest: '九龍灣(麗晶)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '87', routeSeq: 1, stopSeq: 7 },
   { route: '117B', dest: '安達臣(安愉道)', operator: 'gmb', gmbRegion: 'NT', gmbRoute: '117B', routeSeq: 1, stopSeq: 25 },
+  { route: '76A', dest: '聯合醫院', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '76A', routeSeq: 1, stopSeq: 2 },
 ];
 
 // 廣田邨廣靖樓主力
@@ -266,7 +267,7 @@ export async function GET() {
     `;
     curY += 28;
 
-    // 其他路線雙欄
+    // 其他路線雙欄 (剛好 8 條排 4 行)
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -321,10 +322,10 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (主力 6 條 + 備用 7 條雙欄) -->
+    <!-- 區域一：康栢苑 (主力 6 條 + 備用 8 條雙欄) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1210，完美收尾) -->
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1210) -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1210)}
   </svg>
   `;
