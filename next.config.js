@@ -3,4 +3,4 @@ const nextConfig = {
   serverComponentsExternalPackages: ['@resvg/resvg-js'],
 };
 
-export default nextConfig;
+module.exports = nextConfig;
