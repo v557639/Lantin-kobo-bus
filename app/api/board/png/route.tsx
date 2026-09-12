@@ -9,7 +9,7 @@ let fontBufferCache: Buffer | null = null;
 
 function getFontBuffer(): Buffer {
   if (fontBufferCache) return fontBufferCache;
-  const fontPath = path.join(process.cwd(), 'app/api/board/png/font.ttf');
+  const fontPath = path.join(process.cwd(), 'app', 'api', 'board', 'png', 'font.ttf');
   fontBufferCache = fs.readFileSync(fontPath);
   return fontBufferCache;
 }
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
     const svgText = await svgRes.text();
 
-    // 2. 載入本地 TTF 字體
+    // 2. 讀取本地 font.ttf
     const fontBuffer = getFontBuffer();
 
     // 3. 用 Resvg 渲染
