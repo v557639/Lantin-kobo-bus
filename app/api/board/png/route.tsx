@@ -1,40 +1,58 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+import { Resvg } from '@resvg/resvg-js';
+import fs from 'fs';
+import path from 'path';
+
+let fontBufferCache: Buffer | null = null;
+
+function getFontBuffer(): Buffer {
+  if (fontBufferCache) return fontBufferCache;
+  const fontPath = path.join(process.cwd(), 'app/api/board/png/font.ttf');
+  fontBufferCache = fs.readFileSync(fontPath);
+  return fontBufferCache;
+}
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const svgUrl = `${url.origin}/api/board`;
 
-    // 抓取原本的 SVG
+    // 1. 抓取 SVG
     const svgRes = await fetch(svgUrl, { cache: 'no-store' });
+    if (!svgRes.ok) {
+      throw new Error(`Failed to fetch SVG: ${svgRes.statusText}`);
+    }
     const svgText = await svgRes.text();
 
-    // 叫專門處理 SVG 轉 PNG 的雲端引擎 (自帶全套 Noto CJK 中文字體) 轉成 1440x1920
-    const renderRes = await fetch('https://svg-to-image.vercel.app/api/render', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        svg: svgText,
-        width: 1440,
-        height: 1920,
-        format: 'png',
-      }),
+    // 2. 載入本地 TTF 字體
+    const fontBuffer = getFontBuffer();
+
+    // 3. 用 Resvg 渲染
+    const resvg = new Resvg(svgText, {
+      fitTo: {
+        mode: 'width',
+        value: 1440,
+      },
+      font: {
+        fontBuffers: [fontBuffer],
+        loadSystemFonts: false,
+      },
     });
 
-    if (!renderRes.ok) {
-      // 備用方案：如果外網代理失敗，直接回傳
-      throw new Error('Render failed');
-    }
+    const pngData = resvg.render();
+    const pngBuffer = pngData.asPng();
 
-    const pngBuffer = await renderRes.arrayBuffer();
-
-    return new Response(pngBuffer, {
+    return new Response(pngBuffer as any, {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'no-store, max-age=0',
       },
     });
   } catch (err: any) {
-    return new Response(`Error: ${err.message}`, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('PNG error:', msg);
+    return new Response(`Error: ${msg}`, { status: 500 });
   }
 }
