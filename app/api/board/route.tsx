@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑路線配置
+// 康栢苑主力
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', dir: 'O' },
   { route: '16X', dest: '旺角(柏景灣)', dir: 'O' },
@@ -9,23 +9,29 @@ const HONG_PAK_PRIMARY = [
   { route: '603', dest: '平田', dir: 'I' },
 ];
 
+// 康栢苑其他（雙欄顯示：加入 14H, A26）
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '613', dest: '安泰', dir: 'I' },
+  { route: '14H', dest: '順天', dir: 'I' },
+  { route: 'A26', dest: '機場', dir: 'O' },
 ];
 
-// 廣田邨廣靖樓路線配置（603, 603S, 613 升格主力）
+// 廣田邨廣靖樓主力
 const KWONG_CHING_PRIMARY = [
   { route: '603', dest: '中環(渡輪碼頭)', dir: 'O' },
   { route: '603S', dest: '中環(機利文街)', dir: 'O' },
   { route: '613', dest: '筲箕灣', dir: 'O' },
 ];
 
+// 廣田邨廣靖樓其他（雙欄顯示：703A 改為正宗 603A）
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
   { route: '214', dest: '油塘', dir: 'O' },
   { route: '88X', dest: '火炭(駿洋邨)', dir: 'O' },
+  { route: '14H', dest: '油塘', dir: 'O' },
+  { route: '603A', dest: '中環(機利文街)', dir: 'O' },
 ];
 
 // 天文台即時天氣 API
@@ -60,7 +66,7 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
 
     const now = Date.now();
     const valid = json.data.filter((i: any) => {
-      const matchDir = item.dir ? i.dir === item.dir : true;
+      const matchDir = item.dir ? (i.dir === item.dir) : true;
       return matchDir && i.eta && new Date(i.eta).getTime() > now;
     });
 
@@ -80,7 +86,7 @@ async function getEta(item: { route: string; dest: string; dir: string }) {
     });
 
     return { route: item.route, dest: displayDest, etas };
-  } catch (e) {
+  } catch {
     return { route: item.route, dest: item.dest, etas: [] };
   }
 }
@@ -142,10 +148,9 @@ export async function GET() {
     `;
   }
 
-  // 渲染分區（包含常搭主力區與備用輔助區）
   const renderArea = (title: string, width: number, priData: any[], secData: any[], startY: number) => {
     const priRowH = 104;
-    const secRowH = 64;
+    const secRowH = 68;
     let curY = startY;
 
     // 分區黑標題
@@ -155,7 +160,7 @@ export async function GET() {
     `;
     curY += 72;
 
-    // 主力常搭路線（大字體 + 3 個班次）
+    // 主力常搭路線（單欄 + 3 班次）
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
       const textY = rowTop + 66;
@@ -183,26 +188,47 @@ export async function GET() {
       `;
     }).join('');
 
-    curY += priData.length * priRowH + 12;
+    curY += priData.length * priRowH + 10;
 
-    // 備用路線標籤與列表
+    // 其他路線標籤
     const secTag = `
       <text x="54" y="${curY + 18}" font-size="22" font-family="sans-serif" font-weight="bold" fill="#888888">其他路線</text>
     `;
-    curY += 26;
+    curY += 28;
 
-    const secSvg = secData.map((item, idx) => {
-      const rowTop = curY + idx * secRowH;
-      const textY = rowTop + 44;
-      const eta1 = item.etas[0] || '未有班次';
+    // 其他路線：雙欄一行兩條線
+    let secSvg = '';
+    const numRows = Math.ceil(secData.length / 2);
 
-      return `
-        <text x="70" y="${textY}" font-size="34" font-family="sans-serif" font-weight="bold" fill="#555555">${item.route}</text>
-        <text x="260" y="${textY}" font-size="26" font-family="sans-serif" fill="#666666">往 ${item.dest}</text>
-        <text x="910" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#333333">${eta1}</text>
-        <line x1="50" y1="${rowTop + secRowH}" x2="1390" y2="${rowTop + secRowH}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="6,4" />
-      `;
-    }).join('');
+    for (let r = 0; r < numRows; r++) {
+      const rowTop = curY + r * secRowH;
+      const textY = rowTop + 46;
+      const leftItem = secData[r * 2];
+      const rightItem = secData[r * 2 + 1];
+
+      // 左欄
+      const leftEta = leftItem?.etas[0] || '未有班次';
+      const leftCol = leftItem ? `
+        <text x="70" y="${textY}" font-size="34" font-family="sans-serif" font-weight="900" fill="#444444">${leftItem.route}</text>
+        <text x="210" y="${textY}" font-size="26" font-family="sans-serif" fill="#666666">往 ${leftItem.dest}</text>
+        <text x="680" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${leftEta}</text>
+      ` : '';
+
+      // 中間縱向分隔線
+      const midLine = `<line x1="720" y1="${rowTop + 10}" x2="720" y2="${rowTop + secRowH - 10}" stroke="#e0e0e0" stroke-width="2" />`;
+
+      // 右欄
+      const rightEta = rightItem?.etas[0] || (rightItem ? '未有班次' : '');
+      const rightCol = rightItem ? `
+        <text x="760" y="${textY}" font-size="34" font-family="sans-serif" font-weight="900" fill="#444444">${rightItem.route}</text>
+        <text x="900" y="${textY}" font-size="26" font-family="sans-serif" fill="#666666">往 ${rightItem.dest}</text>
+        <text x="1370" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${rightEta}</text>
+      ` : '';
+
+      const bottomLine = `<line x1="50" y1="${rowTop + secRowH}" x2="1390" y2="${rowTop + secRowH}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="6,4" />`;
+
+      secSvg += leftCol + midLine + rightCol + bottomLine;
+    }
 
     return titleSvg + priSvg + secTag + secSvg;
   };
@@ -224,7 +250,7 @@ export async function GET() {
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
     <!-- 區域二：廣田邨廣靖樓 -->
-    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1070)}
+    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1060)}
   </svg>
   `;
 
