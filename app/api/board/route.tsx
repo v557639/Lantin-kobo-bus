@@ -73,7 +73,7 @@ async function getEta(item: any) {
       if (!json?.data) return { route: item.route, dest: item.dest, etas: [] };
 
       const valid = json.data.filter((i: any) => i.eta && new Date(i.eta).getTime() > now);
-      const etas = valid.slice(0, 3).map((i: any) => {
+      const etas = valid.slice(0, 2).map((i: any) => {
         const etaTime = new Date(i.eta);
         const diff = Math.round((etaTime.getTime() - now) / 60000);
         const timeStr = etaTime.toLocaleTimeString('zh-HK', {
@@ -107,7 +107,7 @@ async function getEta(item: any) {
           const etaJson = await etaRes.json();
           const list = etaJson?.data?.eta || [];
           const etas = list.filter((i: any) => i.timestamp && new Date(i.timestamp).getTime() > now)
-            .slice(0, 3)
+            .slice(0, 2)
             .map((i: any) => {
               const diff = i.diff !== undefined ? i.diff : Math.round((new Date(i.timestamp).getTime() - now) / 60000);
               const timeStr = new Date(i.timestamp).toLocaleTimeString('zh-HK', {
@@ -139,7 +139,7 @@ async function getEta(item: any) {
 
     const displayDest = valid[0]?.dest_tc || item.dest;
 
-    const etas = valid.slice(0, 3).map((i: any) => {
+    const etas = valid.slice(0, 2).map((i: any) => {
       const etaTime = new Date(i.eta);
       const diff = Math.round((etaTime.getTime() - now) / 60000);
       const timeStr = etaTime.toLocaleTimeString('zh-HK', {
@@ -169,7 +169,7 @@ export async function GET() {
   }).formatToParts(now);
 
   const month = parts.find(p => p.type === 'month')?.value || '9';
-  const day = parts.find(p => p.type === 'day')?.value || '12';
+  const day = parts.find(p => p.type === 'day')?.value || '13';
   
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   const dayIndex = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' })).getDay();
@@ -217,7 +217,7 @@ export async function GET() {
 
   const renderArea = (title: string, width: number, priData: any[], secData: any[], startY: number) => {
     const priRowH = 100;
-    const secRowH = 66;
+    const secRowH = 68;
     let curY = startY;
 
     // 分區黑標題
@@ -227,34 +227,31 @@ export async function GET() {
     `;
     curY += 68;
 
-    // 主力常搭路線
+    // 主力常搭路線（只留 2 班車，騰出空間全面放大）
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
-      const textY = rowTop + 64;
+      const textY = rowTop + 65;
       const isOdd = idx % 2 === 1;
       const bgRect = isOdd ? `<rect x="50" y="${rowTop}" width="1340" height="${priRowH}" fill="#f4f4f4" />` : '';
 
       const eta1 = item.etas[0] || '未有班次';
       const eta2 = item.etas[1] || '';
-      const eta3 = item.etas[2] || '';
       
-      const badge = item.isGmb ? `<rect x="58" y="${rowTop + 34}" width="42" height="24" rx="4" fill="#000000" /><text x="79" y="${rowTop + 51}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const routeX = item.isGmb ? '112' : '70';
+      const badge = item.isGmb ? `<rect x="58" y="${rowTop + 33}" width="46" height="26" rx="4" fill="#000000" /><text x="81" y="${rowTop + 51}" font-size="15" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const routeX = item.isGmb ? '116' : '70';
 
       return `
         ${bgRect}
         ${badge}
-        <text x="${routeX}" y="${textY}" font-size="52" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="260" y="${textY - 3}" font-size="34" font-family="sans-serif" font-weight="bold" fill="#222222">往 ${item.dest}</text>
+        <text x="${routeX}" y="${textY}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
+        <text x="260" y="${textY - 3}" font-size="36" font-family="sans-serif" font-weight="bold" fill="#222222">往 ${item.dest}</text>
         
-        <line x1="600" y1="${rowTop + 14}" x2="600" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
-        <text x="910" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <line x1="590" y1="${rowTop + 14}" x2="590" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
+        <text x="1000" y="${textY}" font-size="52" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
         
-        <line x1="940" y1="${rowTop + 18}" x2="940" y2="${rowTop + priRowH - 18}" stroke="#e0e0e0" stroke-width="2" />
-        <text x="1160" y="${textY}" font-size="32" font-family="sans-serif" fill="#444444" text-anchor="end">${eta2}</text>
+        <line x1="1040" y1="${rowTop + 18}" x2="1040" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
+        <text x="1380" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#555555" text-anchor="end">${eta2}</text>
         
-        <line x1="1180" y1="${rowTop + 18}" x2="1180" y2="${rowTop + priRowH - 18}" stroke="#e0e0e0" stroke-width="2" />
-        <text x="1380" y="${textY}" font-size="28" font-family="sans-serif" fill="#777777" text-anchor="end">${eta3}</text>
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
       `;
     }).join('');
@@ -263,42 +260,42 @@ export async function GET() {
 
     // 其他路線標籤
     const secTag = `
-      <text x="54" y="${curY + 18}" font-size="22" font-family="sans-serif" font-weight="bold" fill="#888888">其他路線 / 專線小巴</text>
+      <text x="54" y="${curY + 20}" font-size="24" font-family="sans-serif" font-weight="bold" fill="#777777">其他路線 / 專線小巴</text>
     `;
-    curY += 28;
+    curY += 30;
 
-    // 其他路線雙欄 (剛好 8 條排 4 行)
+    // 其他路線雙欄（字體升級 1-2 級，更清晰）
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
     for (let r = 0; r < numRows; r++) {
       const rowTop = curY + r * secRowH;
-      const textY = rowTop + 45;
+      const textY = rowTop + 47;
       const leftItem = secData[r * 2];
       const rightItem = secData[r * 2 + 1];
 
       const leftEta = leftItem?.etas[0] || '未有班次';
-      const leftBadge = leftItem?.isGmb ? `<rect x="68" y="${rowTop + 17}" width="34" height="22" rx="4" fill="#000000" /><text x="85" y="${rowTop + 33}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const leftRouteX = leftItem?.isGmb ? '112' : '70';
+      const leftBadge = leftItem?.isGmb ? `<rect x="66" y="${rowTop + 17}" width="38" height="24" rx="4" fill="#000000" /><text x="85" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const leftRouteX = leftItem?.isGmb ? '116' : '70';
 
       const leftCol = leftItem ? `
         ${leftBadge}
-        <text x="${leftRouteX}" y="${textY}" font-size="34" font-family="sans-serif" font-weight="900" fill="#444444">${leftItem.route}</text>
-        <text x="240" y="${textY}" font-size="26" font-family="sans-serif" fill="#666666">往 ${leftItem.dest}</text>
-        <text x="680" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${leftEta}</text>
+        <text x="${leftRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
+        <text x="245" y="${textY - 2}" font-size="30" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
+        <text x="680" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
 
-      const midLine = `<line x1="720" y1="${rowTop + 10}" x2="720" y2="${rowTop + secRowH - 10}" stroke="#e0e0e0" stroke-width="2" />`;
+      const midLine = `<line x1="710" y1="${rowTop + 8}" x2="710" y2="${rowTop + secRowH - 8}" stroke="#d0d0d0" stroke-width="2" />`;
 
       const rightEta = rightItem?.etas[0] || (rightItem ? '未有班次' : '');
-      const rightBadge = rightItem?.isGmb ? `<rect x="758" y="${rowTop + 17}" width="34" height="22" rx="4" fill="#000000" /><text x="775" y="${rowTop + 33}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const rightRouteX = rightItem?.isGmb ? '802' : '760';
+      const rightBadge = rightItem?.isGmb ? `<rect x="746" y="${rowTop + 17}" width="38" height="24" rx="4" fill="#000000" /><text x="765" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const rightRouteX = rightItem?.isGmb ? '796' : '750';
 
       const rightCol = rightItem ? `
         ${rightBadge}
-        <text x="${rightRouteX}" y="${textY}" font-size="34" font-family="sans-serif" font-weight="900" fill="#444444">${rightItem.route}</text>
-        <text x="930" y="${textY}" font-size="26" font-family="sans-serif" fill="#666666">往 ${rightItem.dest}</text>
-        <text x="1370" y="${textY}" font-size="32" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#111111">${rightEta}</text>
+        <text x="${rightRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
+        <text x="925" y="${textY - 2}" font-size="30" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
+        <text x="1370" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
 
       const bottomLine = `<line x1="50" y1="${rowTop + secRowH}" x2="1390" y2="${rowTop + secRowH}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="6,4" />`;
