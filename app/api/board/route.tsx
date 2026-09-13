@@ -238,20 +238,21 @@ export async function GET() {
       return `
         ${bgRect}
         ${badge}
-        <!-- 路線號碼字體 +1 升至 74px -->
+        <!-- 路線號碼 (74px) -->
         <text x="${routeX}" y="${textY}" font-size="74" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
         
-        <!-- 目的地字體保持 38px 唔改 -->
-        <text x="300" y="${textY - 4}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
+        <!-- 目的地起點移回 x=270，字體 38px，確保長字不會撞線 -->
+        <text x="270" y="${textY - 4}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <!-- 第一條線略為向右移至 x=635 -->
-        <line x1="635" y1="${rowTop + 16}" x2="635" y2="${rowTop + priRowH - 16}" stroke="#cccccc" stroke-width="2" />
-        <!-- 班次 1 字體 +1 升至 68px -->
-        <text x="1010" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <!-- 分隔線 1 設在 x=615 -->
+        <line x1="615" y1="${rowTop + 16}" x2="615" y2="${rowTop + priRowH - 16}" stroke="#cccccc" stroke-width="2" />
+        
+        <!-- 班次 1 錨點移至 x=1025，全面拉開與分隔線 1 的距離 -->
+        <text x="1025" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
         
         <!-- 分隔線 2 設在 x=1045 -->
         <line x1="1045" y1="${rowTop + 20}" x2="1045" y2="${rowTop + priRowH - 20}" stroke="#dcdcdc" stroke-width="2" />
-        <!-- 班次 2 字體 +1 升至 56px -->
+        <!-- 班次 2 錨點 x=1380 -->
         <text x="1380" y="${textY}" font-size="56" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
@@ -266,7 +267,7 @@ export async function GET() {
     `;
     curY += 36;
 
-    // 其他路線雙欄 (路線與目的地空格加闊)
+    // 其他路線雙欄
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -283,7 +284,6 @@ export async function GET() {
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
-        <!-- 左欄目的地向右推至 x=205，加闊間隙 -->
         <text x="205" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
         <text x="690" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
@@ -297,7 +297,6 @@ export async function GET() {
       const rightCol = rightItem ? `
         ${rightBadge}
         <text x="${rightRouteX}" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
-        <!-- 右欄目的地向右推至 x=880，加闊間隙 -->
         <text x="880" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
         <text x="1375" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
