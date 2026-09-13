@@ -13,7 +13,7 @@ const HONG_PAK_PRIMARY = [
 // 康栢苑其他 (保留 4 條排 2 行)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
-  { route: '214', dest: '油塘', dir: 'O' },
+  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
 ];
@@ -28,7 +28,7 @@ const KWONG_CHING_PRIMARY = [
 // 廣田邨廣靖樓其他 (保留 4 條排 2 行)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
+  { route: '214', dest: '油塘', dir: 'O' },
   { route: '88X', dest: '火炭(駿洋邨)', dir: 'O' },
   { route: '14H', dest: '順利(循環線)', dir: 'I' },
 ];
@@ -211,9 +211,8 @@ export async function GET() {
   }
 
   const renderArea = (title: string, width: number, priData: any[], secData: any[], startY: number) => {
-    // 方案 A：拉闊行距，提升透氣感
-    const priRowH = 118; // 主力行高由 104 放大至 118
-    const secRowH = 82;  // 次要行高由 70 放大至 82
+    const priRowH = 118;
+    const secRowH = 82;
     let curY = startY;
 
     // 分區黑標題
@@ -226,27 +225,34 @@ export async function GET() {
     // 主力常搭路線
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
-      const textY = rowTop + 80;
+      const textY = rowTop + 82;
       const isOdd = idx % 2 === 1;
       const bgRect = isOdd ? `<rect x="50" y="${rowTop}" width="1340" height="${priRowH}" fill="#f4f4f4" />` : '';
 
       const eta1 = item.etas[0] || '未有班次';
       const eta2 = item.etas[1] || '';
       
-      const badge = item.isGmb ? `<rect x="52" y="${rowTop + 39}" width="52" height="32" rx="4" fill="#000000" /><text x="78" y="${rowTop + 62}" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const badge = item.isGmb ? `<rect x="50" y="${rowTop + 38}" width="54" height="34" rx="4" fill="#000000" /><text x="77" y="${rowTop + 62}" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
       const routeX = item.isGmb ? '120' : '65';
 
       return `
         ${bgRect}
         ${badge}
-        <text x="${routeX}" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="290" y="${textY - 3}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
+        <!-- 路線號碼字體 +1 升至 74px -->
+        <text x="${routeX}" y="${textY}" font-size="74" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
         
-        <line x1="610" y1="${rowTop + 16}" x2="610" y2="${rowTop + priRowH - 16}" stroke="#cccccc" stroke-width="2" />
-        <text x="1010" y="${textY}" font-size="62" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <!-- 目的地字體保持 38px 唔改 -->
+        <text x="300" y="${textY - 4}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <line x1="1050" y1="${rowTop + 20}" x2="1050" y2="${rowTop + priRowH - 20}" stroke="#dcdcdc" stroke-width="2" />
-        <text x="1380" y="${textY}" font-size="52" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
+        <!-- 第一條線略為向右移至 x=635 -->
+        <line x1="635" y1="${rowTop + 16}" x2="635" y2="${rowTop + priRowH - 16}" stroke="#cccccc" stroke-width="2" />
+        <!-- 班次 1 字體 +1 升至 68px -->
+        <text x="1010" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        
+        <!-- 分隔線 2 設在 x=1045 -->
+        <line x1="1045" y1="${rowTop + 20}" x2="1045" y2="${rowTop + priRowH - 20}" stroke="#dcdcdc" stroke-width="2" />
+        <!-- 班次 2 字體 +1 升至 56px -->
+        <text x="1380" y="${textY}" font-size="56" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
       `;
@@ -260,7 +266,7 @@ export async function GET() {
     `;
     curY += 36;
 
-    // 其他路線雙欄
+    // 其他路線雙欄 (路線與目的地空格加闊)
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -277,7 +283,8 @@ export async function GET() {
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
-        <text x="180" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
+        <!-- 左欄目的地向右推至 x=205，加闊間隙 -->
+        <text x="205" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
         <text x="690" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
 
@@ -290,7 +297,8 @@ export async function GET() {
       const rightCol = rightItem ? `
         ${rightBadge}
         <text x="${rightRouteX}" y="${textY}" font-size="44" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
-        <text x="855" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
+        <!-- 右欄目的地向右推至 x=880，加闊間隙 -->
+        <text x="880" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
         <text x="1375" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
 
@@ -318,7 +326,7 @@ export async function GET() {
     <!-- 區域一：康栢苑 (起點 Y=195) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點下調至 Y=1230，拉勻全屏比例) -->
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1230) -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1230)}
   </svg>
   `;
