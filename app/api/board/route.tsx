@@ -13,7 +13,7 @@ const HONG_PAK_PRIMARY = [
 // 康栢苑其他 (保留 4 條排 2 行)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
-  { route: '214', dest: '油塘', dir: 'O' },
+  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
 ];
@@ -28,7 +28,7 @@ const KWONG_CHING_PRIMARY = [
 // 廣田邨廣靖樓其他 (保留 4 條排 2 行)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
+  { route: '214', dest: '油塘', dir: 'O' },
   { route: '88X', dest: '火炭(駿洋邨)', dir: 'O' },
   { route: '14H', dest: '順利(循環線)', dir: 'I' },
 ];
@@ -185,17 +185,18 @@ export async function GET() {
     Promise.all(KWONG_CHING_SECONDARY.map(getEta))
   ]);
 
+  // 天氣圖示垂直水平校正（抽高 Y 軸，完美貼合 27°C baseline）
   let weatherSvg = '';
   if (weather.weatherType === 'sun') {
     weatherSvg = `
-      <g transform="translate(710, 68)">
+      <g transform="translate(715, 52)">
         <circle cx="36" cy="36" r="20" fill="#000000" />
         <path d="M36 4 v10 M36 58 v10 M4 36 h10 M58 36 h10 M13 13 l8 8 M51 51 l8 8 M13 59 l8 -8 M51 13 l8 8" stroke="#000000" stroke-width="6" stroke-linecap="round" />
       </g>
     `;
   } else if (weather.weatherType === 'rain') {
     weatherSvg = `
-      <g transform="translate(710, 65)">
+      <g transform="translate(715, 48)">
         <path d="M20 38 a16 16 0 0 1 30 -6 a14 14 0 0 1 20 12 a12 12 0 0 1 -5 22 h-44 a15 15 0 0 1 -1 -28 z" fill="#000000" />
         <line x1="25" y1="70" x2="18" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
         <line x1="42" y1="70" x2="35" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
@@ -204,7 +205,7 @@ export async function GET() {
     `;
   } else {
     weatherSvg = `
-      <g transform="translate(710, 68)">
+      <g transform="translate(715, 50)">
         <path d="M25 45 a20 20 0 0 1 36 -8 a16 16 0 0 1 24 14 a14 14 0 0 1 -6 25 h-52 a18 18 0 0 1 -2 -31 z" fill="#000000" />
       </g>
     `;
@@ -253,7 +254,7 @@ export async function GET() {
 
     curY += priData.length * priRowH + 16;
 
-    // 其他路線標籤（已改為純粹「其他路線」）
+    // 其他路線標籤
     const secTag = `
       <text x="54" y="${curY + 22}" font-size="24" font-family="sans-serif" font-weight="bold" fill="#777777">其他路線</text>
     `;
