@@ -10,11 +10,11 @@ const HONG_PAK_PRIMARY = [
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他 (保留 4 條排 2 行)
+// 康栢苑其他 (已徹底移除 87、76A、117B、A26，只留 4 條排 2 行)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
-  { route: '214', dest: '油塘', dir: 'O' },
-  { route: '613', dest: '安泰', dir: 'I' },
+  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
+  { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
 ];
 
@@ -25,10 +25,10 @@ const KWONG_CHING_PRIMARY = [
   { route: '613', dest: '筲箕灣', dir: 'O' },
 ];
 
-// 廣田邨廣靖樓其他 (保留 4 條排 2 行)
+// 廣田邨廣靖樓其他 (已徹底移除 603A，只留 4 條排 2 行)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
+  { route: '214', dest: '油塘', dir: 'O' },
   { route: '88X', dest: '火炭(駿洋邨)', dir: 'O' },
   { route: '14H', dest: '順利(循環線)', dir: 'I' },
 ];
@@ -239,12 +239,16 @@ export async function GET() {
         ${bgRect}
         ${badge}
         <text x="${routeX}" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="300" y="${textY - 4}" font-size="42" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <line x1="670" y1="${rowTop + 14}" x2="670" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
-        <text x="1030" y="${textY}" font-size="62" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <!-- 主要路線目的地字體 size-1 改為 38px -->
+        <text x="290" y="${textY - 3}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <line x1="1060" y1="${rowTop + 18}" x2="1060" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
+        <!-- 班次 1 左邊的線向左移至 x=610 (留足夠位置畀班次1) -->
+        <line x1="610" y1="${rowTop + 14}" x2="610" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
+        <text x="1010" y="${textY}" font-size="62" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        
+        <!-- 分隔線 2 (x=1050) -->
+        <line x1="1050" y1="${rowTop + 18}" x2="1050" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
         <text x="1380" y="${textY}" font-size="52" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
@@ -259,7 +263,7 @@ export async function GET() {
     `;
     curY += 32;
 
-    // 其他路線雙欄 (目的地改為 26px，留出足夠寬度防止擠逼)
+    // 其他路線雙欄 (4 條路線排 2 行)
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -276,7 +280,7 @@ export async function GET() {
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
-        <text x="195" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
+        <text x="180" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
         <text x="690" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
 
@@ -289,7 +293,7 @@ export async function GET() {
       const rightCol = rightItem ? `
         ${rightBadge}
         <text x="${rightRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
-        <text x="870" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
+        <text x="855" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
         <text x="1375" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
 
