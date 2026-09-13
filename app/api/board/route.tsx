@@ -13,7 +13,7 @@ const HONG_PAK_PRIMARY = [
 // 康栢苑其他 (保留 4 條排 2 行)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
+  { route: '214', dest: '油塘', dir: 'O' },
   { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
 ];
@@ -28,7 +28,7 @@ const KWONG_CHING_PRIMARY = [
 // 廣田邨廣靖樓其他 (保留 4 條排 2 行)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
-  { route: '214', dest: '油塘', dir: 'O' },
+  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
   { route: '88X', dest: '火炭(駿洋邨)', dir: 'O' },
   { route: '14H', dest: '順利(循環線)', dir: 'I' },
 ];
@@ -238,21 +238,13 @@ export async function GET() {
       return `
         ${bgRect}
         ${badge}
-        <!-- 路線號碼 (74px) -->
         <text x="${routeX}" y="${textY}" font-size="74" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        
-        <!-- 目的地起點移回 x=270，字體 38px，確保長字不會撞線 -->
         <text x="270" y="${textY - 4}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <!-- 分隔線 1 設在 x=615 -->
         <line x1="615" y1="${rowTop + 16}" x2="615" y2="${rowTop + priRowH - 16}" stroke="#cccccc" stroke-width="2" />
-        
-        <!-- 班次 1 錨點移至 x=1025，全面拉開與分隔線 1 的距離 -->
         <text x="1025" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
         
-        <!-- 分隔線 2 設在 x=1045 -->
         <line x1="1045" y1="${rowTop + 20}" x2="1045" y2="${rowTop + priRowH - 20}" stroke="#dcdcdc" stroke-width="2" />
-        <!-- 班次 2 錨點 x=1380 -->
         <text x="1380" y="${textY}" font-size="56" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
@@ -261,9 +253,9 @@ export async function GET() {
 
     curY += priData.length * priRowH + 16;
 
-    // 其他路線標籤
+    // 其他路線標籤（已改為純粹「其他路線」）
     const secTag = `
-      <text x="54" y="${curY + 22}" font-size="24" font-family="sans-serif" font-weight="bold" fill="#777777">其他路線 / 專線小巴</text>
+      <text x="54" y="${curY + 22}" font-size="24" font-family="sans-serif" font-weight="bold" fill="#777777">其他路線</text>
     `;
     curY += 36;
 
