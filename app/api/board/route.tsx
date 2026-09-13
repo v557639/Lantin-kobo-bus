@@ -10,14 +10,12 @@ const HONG_PAK_PRIMARY = [
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他 (已刪除 87 及 76A，保留 6 條排 3 行)
+// 康栢苑其他 (保留 4 條排 2 行)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '油塘', dir: 'O' },
   { route: '613', dest: '安泰', dir: 'I' },
   { route: '14H', dest: '順天', dir: 'I' },
-  { route: 'A26', dest: '機場', operator: 'ctb', stopId: '001713' },
-  { route: '117B', dest: '安達臣(安愉道)', operator: 'gmb', gmbRegion: 'NT', gmbRoute: '117B', routeSeq: 1, stopSeq: 25 },
 ];
 
 // 廣田邨廣靖樓主力
@@ -27,7 +25,7 @@ const KWONG_CHING_PRIMARY = [
   { route: '613', dest: '筲箕灣', dir: 'O' },
 ];
 
-// 廣田邨廣靖樓其他 (已刪除 603A，保留 4 條排 2 行)
+// 廣田邨廣靖樓其他 (保留 4 條排 2 行)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
@@ -224,7 +222,7 @@ export async function GET() {
     `;
     curY += 68;
 
-    // 主力常搭路線（更巨型文字、更寬間距、分隔線右移）
+    // 主力常搭路線
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
       const textY = rowTop + 72;
@@ -240,20 +238,13 @@ export async function GET() {
       return `
         ${bgRect}
         ${badge}
-        <!-- 路線號碼再放大至 68px -->
         <text x="${routeX}" y="${textY}" font-size="68" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        
-        <!-- 間距加闊：目的地起點移到 x=300，字體放大至 42px -->
         <text x="300" y="${textY - 4}" font-size="42" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <!-- 分隔線 1 (x=670) -->
         <line x1="670" y1="${rowTop + 14}" x2="670" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
-        <!-- 班次 1 放大至 62px -->
         <text x="1030" y="${textY}" font-size="62" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
         
-        <!-- 分隔線 2 右移至 x=1060 -->
         <line x1="1060" y1="${rowTop + 18}" x2="1060" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
-        <!-- 班次 2 放大至 52px -->
         <text x="1380" y="${textY}" font-size="52" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
@@ -268,7 +259,7 @@ export async function GET() {
     `;
     curY += 32;
 
-    // 其他路線雙欄（刪減路線後拉開寬度，避開撞字）
+    // 其他路線雙欄 (目的地改為 26px，留出足夠寬度防止擠逼)
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
@@ -285,7 +276,7 @@ export async function GET() {
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
-        <text x="195" y="${textY - 2}" font-size="28" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
+        <text x="195" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
         <text x="690" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
 
@@ -298,7 +289,7 @@ export async function GET() {
       const rightCol = rightItem ? `
         ${rightBadge}
         <text x="${rightRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
-        <text x="870" y="${textY - 2}" font-size="28" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
+        <text x="870" y="${textY - 2}" font-size="26" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
         <text x="1375" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
 
@@ -323,11 +314,11 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (主力 6 條 + 備用 6 條雙欄) -->
+    <!-- 區域一：康栢苑 (主力 6 條 + 備用 4 條雙欄) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1210) -->
-    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1210)}
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1150) -->
+    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1150)}
   </svg>
   `;
 
