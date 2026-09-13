@@ -216,7 +216,7 @@ export async function GET() {
   }
 
   const renderArea = (title: string, width: number, priData: any[], secData: any[], startY: number) => {
-    const priRowH = 100;
+    const priRowH = 102;
     const secRowH = 68;
     let curY = startY;
 
@@ -227,30 +227,36 @@ export async function GET() {
     `;
     curY += 68;
 
-    // 主力常搭路線（只留 2 班車，騰出空間全面放大）
+    // 主力常搭路線（加大字體、右移分隔線、班次2加大）
     const priSvg = priData.map((item, idx) => {
       const rowTop = curY + idx * priRowH;
-      const textY = rowTop + 65;
+      const textY = rowTop + 68;
       const isOdd = idx % 2 === 1;
       const bgRect = isOdd ? `<rect x="50" y="${rowTop}" width="1340" height="${priRowH}" fill="#f4f4f4" />` : '';
 
       const eta1 = item.etas[0] || '未有班次';
       const eta2 = item.etas[1] || '';
       
-      const badge = item.isGmb ? `<rect x="58" y="${rowTop + 33}" width="46" height="26" rx="4" fill="#000000" /><text x="81" y="${rowTop + 51}" font-size="15" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const routeX = item.isGmb ? '116' : '70';
+      const badge = item.isGmb ? `<rect x="54" y="${rowTop + 33}" width="48" height="28" rx="4" fill="#000000" /><text x="78" y="${rowTop + 52}" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const routeX = item.isGmb ? '118' : '65';
 
       return `
         ${bgRect}
         ${badge}
-        <text x="${routeX}" y="${textY}" font-size="54" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
-        <text x="260" y="${textY - 3}" font-size="36" font-family="sans-serif" font-weight="bold" fill="#222222">往 ${item.dest}</text>
+        <!-- 路線號碼加大至 62px -->
+        <text x="${routeX}" y="${textY}" font-size="62" font-family="sans-serif" font-weight="900" fill="#000000">${item.route}</text>
+        <!-- 目的地加大至 40px -->
+        <text x="260" y="${textY - 3}" font-size="40" font-family="sans-serif" font-weight="bold" fill="#111111">往 ${item.dest}</text>
         
-        <line x1="590" y1="${rowTop + 14}" x2="590" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
-        <text x="1000" y="${textY}" font-size="52" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
+        <!-- 分隔線 1 右移至 660 -->
+        <line x1="660" y1="${rowTop + 14}" x2="660" y2="${rowTop + priRowH - 14}" stroke="#cccccc" stroke-width="2" />
+        <!-- 班次 1 加大至 58px -->
+        <text x="1010" y="${textY}" font-size="58" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${eta1}</text>
         
-        <line x1="1040" y1="${rowTop + 18}" x2="1040" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
-        <text x="1380" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" fill="#555555" text-anchor="end">${eta2}</text>
+        <!-- 分隔線 2 設在 1030 -->
+        <line x1="1030" y1="${rowTop + 18}" x2="1030" y2="${rowTop + priRowH - 18}" stroke="#dcdcdc" stroke-width="2" />
+        <!-- 班次 2 加大至 50px（僅細班次1少少） -->
+        <text x="1380" y="${textY}" font-size="50" font-family="sans-serif" font-weight="bold" fill="#222222" text-anchor="end">${eta2}</text>
         
         <line x1="50" y1="${rowTop + priRowH}" x2="1390" y2="${rowTop + priRowH}" stroke="#e2e2e2" stroke-width="2" />
       `;
@@ -264,38 +270,38 @@ export async function GET() {
     `;
     curY += 30;
 
-    // 其他路線雙欄（字體升級 1-2 級，更清晰）
+    // 其他路線雙欄（修正文字重疊問題）
     let secSvg = '';
     const numRows = Math.ceil(secData.length / 2);
 
     for (let r = 0; r < numRows; r++) {
       const rowTop = curY + r * secRowH;
-      const textY = rowTop + 47;
+      const textY = rowTop + 48;
       const leftItem = secData[r * 2];
       const rightItem = secData[r * 2 + 1];
 
       const leftEta = leftItem?.etas[0] || '未有班次';
-      const leftBadge = leftItem?.isGmb ? `<rect x="66" y="${rowTop + 17}" width="38" height="24" rx="4" fill="#000000" /><text x="85" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const leftRouteX = leftItem?.isGmb ? '116' : '70';
+      const leftBadge = leftItem?.isGmb ? `<rect x="62" y="${rowTop + 17}" width="40" height="24" rx="4" fill="#000000" /><text x="82" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const leftRouteX = leftItem?.isGmb ? '114' : '65';
 
       const leftCol = leftItem ? `
         ${leftBadge}
         <text x="${leftRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${leftItem.route}</text>
-        <text x="245" y="${textY - 2}" font-size="30" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
-        <text x="680" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
+        <text x="235" y="${textY - 2}" font-size="28" font-family="sans-serif" font-weight="500" fill="#444444">往 ${leftItem.dest}</text>
+        <text x="690" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${leftEta}</text>
       ` : '';
 
       const midLine = `<line x1="710" y1="${rowTop + 8}" x2="710" y2="${rowTop + secRowH - 8}" stroke="#d0d0d0" stroke-width="2" />`;
 
       const rightEta = rightItem?.etas[0] || (rightItem ? '未有班次' : '');
-      const rightBadge = rightItem?.isGmb ? `<rect x="746" y="${rowTop + 17}" width="38" height="24" rx="4" fill="#000000" /><text x="765" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
-      const rightRouteX = rightItem?.isGmb ? '796' : '750';
+      const rightBadge = rightItem?.isGmb ? `<rect x="736" y="${rowTop + 17}" width="40" height="24" rx="4" fill="#000000" /><text x="756" y="${rowTop + 34}" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">小巴</text>` : '';
+      const rightRouteX = rightItem?.isGmb ? '788' : '740';
 
       const rightCol = rightItem ? `
         ${rightBadge}
         <text x="${rightRouteX}" y="${textY}" font-size="42" font-family="sans-serif" font-weight="900" fill="#222222">${rightItem.route}</text>
-        <text x="925" y="${textY - 2}" font-size="30" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
-        <text x="1370" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
+        <text x="910" y="${textY - 2}" font-size="28" font-family="sans-serif" font-weight="500" fill="#444444">往 ${rightItem.dest}</text>
+        <text x="1375" y="${textY}" font-size="38" font-family="sans-serif" font-weight="bold" text-anchor="end" fill="#000000">${rightEta}</text>
       ` : '';
 
       const bottomLine = `<line x1="50" y1="${rowTop + secRowH}" x2="1390" y2="${rowTop + secRowH}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="6,4" />`;
@@ -322,8 +328,8 @@ export async function GET() {
     <!-- 區域一：康栢苑 (主力 6 條 + 備用 8 條雙欄) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1210) -->
-    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1210)}
+    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1220) -->
+    ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1220)}
   </svg>
   `;
 
