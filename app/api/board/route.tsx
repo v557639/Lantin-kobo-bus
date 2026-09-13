@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (6 條：小巴 63 坐陣)
+// 康栢苑主力 (6 條)
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', dir: 'O' },
   { route: '16X', dest: '旺角(柏景灣)', dir: 'O' },
@@ -10,7 +10,7 @@ const HONG_PAK_PRIMARY = [
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他 (保留 4 條排 2 行)
+// 康栢苑其他 (4 條)
 const HONG_PAK_SECONDARY = [
   { route: '15X', dest: '紅磡站', dir: 'O' },
   { route: '214', dest: '長沙灣(甘泉街)', dir: 'I' },
@@ -18,14 +18,14 @@ const HONG_PAK_SECONDARY = [
   { route: '14H', dest: '順天', dir: 'I' },
 ];
 
-// 廣田邨廣靖樓主力
+// 廣田邨廣靖樓主力 (3 條)
 const KWONG_CHING_PRIMARY = [
   { route: '603', dest: '中環(渡輪碼頭)', dir: 'O' },
   { route: '603S', dest: '中環(機利文街)', dir: 'O' },
   { route: '613', dest: '筲箕灣', dir: 'O' },
 ];
 
-// 廣田邨廣靖樓其他 (保留 4 條排 2 行)
+// 廣田邨廣靖樓其他 (4 條)
 const KWONG_CHING_SECONDARY = [
   { route: '216M', dest: '油塘站(循環線)', dir: 'O' },
   { route: '214', dest: '油塘', dir: 'O' },
@@ -55,50 +55,39 @@ async function getWeather() {
   }
 }
 
+// 防 429 封鎖的九巴抓取函式（附帶 1 次重試）
+async function fetchKmbWithRetry(url: string, retries = 1): Promise<any> {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok && retries > 0) {
+      await new Promise(r => setTimeout(r, 300));
+      return fetchKmbWithRetry(url, retries - 1);
+    }
+    return await res.json();
+  } catch (err) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 300));
+      return fetchKmbWithRetry(url, retries - 1);
+    }
+    return null;
+  }
+}
+
 async function getEta(item: any) {
   try {
     const now = Date.now();
 
-    // 1. 城巴 API (Citybus)
-    if (item.operator === 'ctb' && item.stopId) {
-      const res = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stopId}/${item.route}`, {
-        cache: 'no-store'
-      });
-      const json = await res.json();
-      if (!json?.data) return { route: item.route, dest: item.dest, etas: [] };
-
-      const valid = json.data.filter((i: any) => i.eta && new Date(i.eta).getTime() > now);
-      const etas = valid.slice(0, 2).map((i: any) => {
-        const etaTime = new Date(i.eta);
-        const diff = Math.round((etaTime.getTime() - now) / 60000);
-        const timeStr = etaTime.toLocaleTimeString('zh-HK', {
-          timeZone: 'Asia/Hong_Kong',
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        const minsText = diff <= 0 ? '即到' : `${diff}分`;
-        return `${minsText} [${timeStr}]`;
-      });
-
-      return { route: item.route, dest: valid[0]?.dest_tc || item.dest, etas };
-    }
-
-    // 2. 綠色專線小巴 API (GMB)
+    // 1. 綠色專線小巴 API (GMB)
     if (item.operator === 'gmb') {
       try {
-        const routeRes = await fetch(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`, {
-          cache: 'no-store'
-        });
+        const routeRes = await fetch(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`, { cache: 'no-store' });
         const routeJson = await routeRes.json();
         const routeId = routeJson?.data?.[0]?.route_id;
 
         if (routeId) {
           const rSeq = item.routeSeq || 1;
           const sSeq = item.stopSeq || 1;
-          const etaRes = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`, {
-            cache: 'no-store'
-          });
+          const etaRes = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`, { cache: 'no-store' });
           const etaJson = await etaRes.json();
           const list = etaJson?.data?.eta || [];
           const etas = list.filter((i: any) => i.timestamp && new Date(i.timestamp).getTime() > now)
@@ -120,11 +109,8 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 3. 九巴 API (KMB)
-    const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`, {
-      cache: 'no-store'
-    });
-    const json = await res.json();
+    // 2. 九巴 API (帶自動重試機制，防止被九巴 429 拋棄)
+    const json = await fetchKmbWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
     if (!json?.data) return { route: item.route, dest: item.dest, etas: [] };
 
     const valid = json.data.filter((i: any) => {
@@ -153,6 +139,17 @@ async function getEta(item: any) {
   }
 }
 
+// 分組循序處理，避免同一毫秒射出 20 個連線被九巴防火牆封鎖
+async function fetchInBatches(items: any[], batchSize = 4) {
+  const results: any[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchRes = await Promise.all(batch.map(getEta));
+    results.push(...batchRes);
+  }
+  return results;
+}
+
 export async function GET() {
   const now = new Date();
   
@@ -177,26 +174,27 @@ export async function GET() {
     minute: '2-digit'
   });
 
+  // 使用分批並行，徹底根治九巴 API Rate Limit 導致後半截班次變「未有班次」的問題
   const [weather, hpPri, hpSec, kcPri, kcSec] = await Promise.all([
     getWeather(),
-    Promise.all(HONG_PAK_PRIMARY.map(getEta)),
-    Promise.all(HONG_PAK_SECONDARY.map(getEta)),
-    Promise.all(KWONG_CHING_PRIMARY.map(getEta)),
-    Promise.all(KWONG_CHING_SECONDARY.map(getEta))
+    fetchInBatches(HONG_PAK_PRIMARY, 4),
+    fetchInBatches(HONG_PAK_SECONDARY, 4),
+    fetchInBatches(KWONG_CHING_PRIMARY, 4),
+    fetchInBatches(KWONG_CHING_SECONDARY, 4)
   ]);
 
-  // 天氣圖示向左移至 x=670，徹底拉開與溫度字體的間距
+  // 天氣圖示水平居中對齊
   let weatherSvg = '';
   if (weather.weatherType === 'sun') {
     weatherSvg = `
-      <g transform="translate(670, 52)">
+      <g transform="translate(715, 52)">
         <circle cx="36" cy="36" r="20" fill="#000000" />
         <path d="M36 4 v10 M36 58 v10 M4 36 h10 M58 36 h10 M13 13 l8 8 M51 51 l8 8 M13 59 l8 -8 M51 13 l8 8" stroke="#000000" stroke-width="6" stroke-linecap="round" />
       </g>
     `;
   } else if (weather.weatherType === 'rain') {
     weatherSvg = `
-      <g transform="translate(670, 48)">
+      <g transform="translate(715, 48)">
         <path d="M20 38 a16 16 0 0 1 30 -6 a14 14 0 0 1 20 12 a12 12 0 0 1 -5 22 h-44 a15 15 0 0 1 -1 -28 z" fill="#000000" />
         <line x1="25" y1="70" x2="18" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
         <line x1="42" y1="70" x2="35" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
@@ -205,7 +203,7 @@ export async function GET() {
     `;
   } else {
     weatherSvg = `
-      <g transform="translate(670, 50)">
+      <g transform="translate(715, 50)">
         <path d="M25 45 a20 20 0 0 1 36 -8 a16 16 0 0 1 24 14 a14 14 0 0 1 -6 25 h-52 a18 18 0 0 1 -2 -31 z" fill="#000000" />
       </g>
     `;
@@ -306,11 +304,11 @@ export async function GET() {
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- Header: 溫度微移至 790，配合圖示 670 留出完美間距 -->
+    <!-- Header -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
       ${weatherSvg}
-      <text x="790" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${weather.temp}</text>
+      <text x="800" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${weather.temp}</text>
       <text x="1390" y="125" font-size="60" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${timeStr}</text>
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
