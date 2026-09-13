@@ -7,19 +7,17 @@ import path from 'path';
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const svgUrl = `${url.origin}/api/board`;
+    // 抓取 SVG 時加入隨機時間戳，防止內部快取
+    const svgUrl = `${url.origin}/api/board?t=${Date.now()}`;
 
-    // 1. 抓取 SVG
     const svgRes = await fetch(svgUrl, { cache: 'no-store' });
     if (!svgRes.ok) {
       throw new Error(`Failed to fetch SVG: ${svgRes.statusText}`);
     }
     const svgText = await svgRes.text();
 
-    // 2. 定位字體檔案絕對路徑
     const fontPath = path.join(process.cwd(), 'app', 'api', 'board', 'png', 'font.ttf');
 
-    // 3. 用 Resvg 渲染，直接將 fontFiles 指向字體檔案
     const resvg = new Resvg(svgText, {
       fitTo: {
         mode: 'width',
@@ -37,7 +35,9 @@ export async function GET(request: Request) {
     return new Response(pngBuffer as any, {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'no-store, max-age=0',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
   } catch (err: unknown) {
