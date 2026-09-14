@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (603 往平田已校正為 seq: 21)
+// 康栢苑主力 (603 往平田已鎖定 seq: 21)
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
   { route: '16X', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
@@ -98,7 +98,7 @@ async function getEta(item: any) {
               const rawDate = parseEta(i.timestamp);
               if (!rawDate || rawDate.getTime() <= now - 30000) return null;
               
-              // 全面提早 1 分鐘（時間戳與倒數扣減 60 秒）
+              // 扣減 60 秒提早預告
               const adjustedDate = new Date(rawDate.getTime() - 60000);
               const diff = Math.round((adjustedDate.getTime() - now) / 60000);
               const timeStr = adjustedDate.toLocaleTimeString('zh-HK', {
@@ -119,7 +119,7 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 2. 九巴路線：鎖定唯一 seq + 提早 1 分鐘機制
+    // 2. 九巴路線：鎖定唯一 seq + 提早 1 分鐘出門緩衝
     const json = await fetchWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
     if (!json?.data || !Array.isArray(json.data)) return { route: item.route, dest: item.dest, etas: [] };
 
@@ -139,7 +139,6 @@ async function getEta(item: any) {
       const rawDate = parseEta(entry.eta);
       if (!rawDate) continue;
 
-      // 核心要求：所有到站時間提早 1 分鐘（例如 3分變2分，時間戳 21:50 變 21:49）
       const adjustedDate = new Date(rawDate.getTime() - 60000);
       const diff = Math.round((adjustedDate.getTime() - now) / 60000);
       const timeStr = adjustedDate.toLocaleTimeString('zh-HK', {
@@ -205,17 +204,18 @@ export async function GET() {
     fetchInBatches(KWONG_CHING_SECONDARY, 4)
   ]);
 
+  // 天氣圖示位置調校至 X=690，同溫度徹底拉開距離
   let weatherSvg = '';
   if (weather.weatherType === 'sun') {
     weatherSvg = `
-      <g transform="translate(715, 52)">
+      <g transform="translate(690, 52)">
         <circle cx="36" cy="36" r="20" fill="#000000" />
         <path d="M36 4 v10 M36 58 v10 M4 36 h10 M58 36 h10 M13 13 l8 8 M51 51 l8 8 M13 59 l8 -8 M51 13 l8 8" stroke="#000000" stroke-width="6" stroke-linecap="round" />
       </g>
     `;
   } else if (weather.weatherType === 'rain') {
     weatherSvg = `
-      <g transform="translate(715, 48)">
+      <g transform="translate(690, 48)">
         <path d="M20 38 a16 16 0 0 1 30 -6 a14 14 0 0 1 20 12 a12 12 0 0 1 -5 22 h-44 a15 15 0 0 1 -1 -28 z" fill="#000000" />
         <line x1="25" y1="70" x2="18" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
         <line x1="42" y1="70" x2="35" y2="86" stroke="#000000" stroke-width="5" stroke-linecap="round" />
@@ -224,7 +224,7 @@ export async function GET() {
     `;
   } else {
     weatherSvg = `
-      <g transform="translate(715, 50)">
+      <g transform="translate(690, 50)">
         <path d="M25 45 a20 20 0 0 1 36 -8 a16 16 0 0 1 24 14 a14 14 0 0 1 -6 25 h-52 a18 18 0 0 1 -2 -31 z" fill="#000000" />
       </g>
     `;
@@ -321,16 +321,16 @@ export async function GET() {
   <svg width="1440" height="1920" viewBox="0 0 1440 1920" xmlns="http://www.w3.org/2000/svg">
     <rect width="1440" height="1920" fill="#ffffff" />
     
-    <!-- Header -->
+    <!-- Header (圖示向左移至 690，溫度推右至 825，空間大幅拉闊) -->
     <g>
       <text x="50" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${fullDateStr}</text>
       ${weatherSvg}
-      <text x="800" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${weather.temp}</text>
+      <text x="825" y="125" font-size="60" font-family="sans-serif" font-weight="900" fill="#000000">${weather.temp}</text>
       <text x="1390" y="125" font-size="60" font-family="sans-serif" font-weight="900" text-anchor="end" fill="#000000">${timeStr}</text>
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (603 往平田已更新為第 21 站) -->
+    <!-- 區域一：康栢苑 (603 往平田已鎖定第 21 站) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
     <!-- 區域二：廣田邨廣靖樓 -->
