@@ -1,39 +1,38 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力
+// 康栢苑主力 (碧雲道康栢苑/康雅苑對出分站)
 const HONG_PAK_PRIMARY = [
-  { route: '16', dest: '旺角(柏景灣)', dir: 'O', matchDest: '旺角' },
-  { route: '16X', dest: '旺角(柏景灣)', dir: 'O', matchDest: '旺角' },
-  { route: '215X', dest: '九龍站', dir: 'O', matchDest: '九龍站' },
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', matchDest: '油塘' },
-  { route: '603', dest: '平田', dir: 'I', matchDest: '平田' },
+  { route: '16', dest: '旺角(柏景灣)', dir: 'O', seq: 4 },
+  { route: '16X', dest: '旺角(柏景灣)', dir: 'O', seq: 4 },
+  { route: '215X', dest: '九龍站', dir: 'O', seq: 4 },
+  { route: '216M', dest: '油塘站(循環線)', dir: 'O', seq: 4 },
+  { route: '603', dest: '平田', dir: 'I', seq: 24 },
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
 // 康栢苑其他
 const HONG_PAK_SECONDARY = [
-  { route: '15X', dest: '紅磡站', dir: 'O', matchDest: '紅磡' },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I', matchDest: '長沙灣' },
-  { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I', matchDest: '安泰' },
-  { route: '14H', dest: '順天', dir: 'I', matchDest: '順天' },
+  { route: '15X', dest: '紅磡站', dir: 'O', seq: 4 },
+  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I', seq: 25 },
+  { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I', seq: 26 },
+  { route: '14H', dest: '順天', dir: 'I', seq: 12 },
 ];
 
-// 廣田邨廣靖樓主力
+// 廣田邨廣靖樓主力 (鎖定「廣田邨廣靖樓」真正分站，不採用廣田商場)
 const KWONG_CHING_PRIMARY = [
-  { route: '603', dest: '中環(渡輪碼頭)', dir: 'O', matchDest: '中環' },
-  { route: '603S', dest: '中環(機利文街)', dir: 'O', matchDest: '中環' },
-  { route: '613', dest: '筲箕灣', dir: 'O', matchDest: '筲箕灣' },
+  { route: '603', dest: '中環(渡輪碼頭)', dir: 'O', seq: 2 },
+  { route: '603S', dest: '中環(機利文街)', dir: 'O', seq: 2 },
+  { route: '613', dest: '筲箕灣', dir: 'O', seq: 21 },
 ];
 
 // 廣田邨廣靖樓其他
 const KWONG_CHING_SECONDARY = [
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', matchDest: '油塘' },
-  { route: '214', dest: '油塘', dir: 'O', matchDest: '油塘' },
-  { route: '88X', dest: '火炭(駿洋邨)', dir: 'O', matchDest: '火炭' },
-  { route: '14H', dest: '順利(循環線)', dir: 'I', matchDest: '順利' },
+  { route: '216M', dest: '油塘站(循環線)', dir: 'O', seq: 2 },
+  { route: '214', dest: '油塘', dir: 'O', seq: 3 },
+  { route: '88X', dest: '火炭(駿洋邨)', dir: 'O', seq: 2 },
+  { route: '14H', dest: '順利(循環線)', dir: 'I', seq: 14 },
 ];
 
-// 天文台即時天氣 API
 async function getWeather() {
   try {
     const res = await fetch('https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc', {
@@ -60,7 +59,6 @@ function parseEta(etaStr: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// 帶重試機制的 fetch 函式
 async function fetchWithRetry(url: string, retries = 1): Promise<any> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -82,7 +80,7 @@ async function getEta(item: any) {
   try {
     const now = Date.now();
 
-    // 1. 綠色專線小巴 63
+    // 1. 專線小巴 63
     if (item.operator === 'gmb') {
       try {
         const routeRes = await fetchWithRetry(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`);
@@ -92,7 +90,7 @@ async function getEta(item: any) {
           const rSeq = item.routeSeq || 1;
           const sSeq = item.stopSeq || 1;
           const etaRes = await fetchWithRetry(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`);
-          const list = etaRes?.data?.eta || [];
+          const list = etaJson?.data?.eta || [];
           
           const etas = list
             .map((i: any) => {
@@ -117,19 +115,26 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 2. 九巴官方標準 route-eta API (保證 100% 有數據)
+    // 2. 九巴 API：鎖定廣靖樓與康栢苑專屬分站序號 (seq)
     const json = await fetchWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
     if (!json?.data || !Array.isArray(json.data)) return { route: item.route, dest: item.dest, etas: [] };
 
-    // 方向與目的地比對
-    const valid = json.data.filter((i: any) => {
+    let valid = json.data.filter((i: any) => {
       const matchDir = item.dir ? (i.dir === item.dir) : true;
-      const matchDest = item.matchDest ? (i.dest_tc && i.dest_tc.includes(item.matchDest)) : true;
+      const matchSeq = item.seq ? (i.seq === item.seq) : true;
       const etaDate = parseEta(i.eta);
-      return matchDir && matchDest && etaDate && (etaDate.getTime() > now - 45000);
+      return matchDir && matchSeq && etaDate && (etaDate.getTime() > now - 45000);
     });
 
-    // 依到站時間由近至遠排序
+    // 備援比對
+    if (valid.length === 0) {
+      valid = json.data.filter((i: any) => {
+        const matchDir = item.dir ? (i.dir === item.dir) : true;
+        const etaDate = parseEta(i.eta);
+        return matchDir && etaDate && (etaDate.getTime() > now - 45000);
+      });
+    }
+
     valid.sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
 
     const seenTimes = new Set();
@@ -161,7 +166,6 @@ async function getEta(item: any) {
   }
 }
 
-// 每次 4 條路線並行分流，防止被九巴防護機制阻擋
 async function fetchInBatches(items: any[], batchSize = 4) {
   const results: any[] = [];
   for (let i = 0; i < items.length; i += batchSize) {
@@ -329,10 +333,10 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 -->
+    <!-- 區域一：康栢苑 (康栢苑站 seq) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 -->
+    <!-- 區域二：廣田邨廣靖樓 (鎖定廣靖樓站 seq) -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1230)}
   </svg>
   `;
