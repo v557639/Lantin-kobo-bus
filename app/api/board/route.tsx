@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (鎖定 App 1933 實證序號)
+// 康栢苑主力 (603 往平田已校正為 seq: 21)
 const HONG_PAK_PRIMARY = [
   { route: '16', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
   { route: '16X', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
   { route: '215X', dest: '九龍站', seq: 2, matchDest: '九龍站' },
   { route: '216M', dest: '藍田站(循環線)', seq: 18 },
-  { route: '603', dest: '平田', seq: 24, matchDest: '平田' },
+  { route: '603', dest: '平田', seq: 21, matchDest: '平田' },
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
@@ -18,7 +18,7 @@ const HONG_PAK_SECONDARY = [
   { route: '14H', dest: '順天', seq: 5 },
 ];
 
-// 廣田邨廣靖樓主力 (鎖定 App 1933 實證序號)
+// 廣田邨廣靖樓主力
 const KWONG_CHING_PRIMARY = [
   { route: '603', dest: '中環(渡輪碼頭)', seq: 7, matchDest: '中環' },
   { route: '603S', dest: '中環(機利文街)', seq: 7, matchDest: '中環' },
@@ -95,10 +95,13 @@ async function getEta(item: any) {
           
           const etas = list
             .map((i: any) => {
-              const etaDate = parseEta(i.timestamp);
-              if (!etaDate || etaDate.getTime() <= now - 45000) return null;
-              const diff = Math.round((etaDate.getTime() - now) / 60000);
-              const timeStr = etaDate.toLocaleTimeString('zh-HK', {
+              const rawDate = parseEta(i.timestamp);
+              if (!rawDate || rawDate.getTime() <= now - 30000) return null;
+              
+              // 全面提早 1 分鐘（時間戳與倒數扣減 60 秒）
+              const adjustedDate = new Date(rawDate.getTime() - 60000);
+              const diff = Math.round((adjustedDate.getTime() - now) / 60000);
+              const timeStr = adjustedDate.toLocaleTimeString('zh-HK', {
                 timeZone: 'Asia/Hong_Kong',
                 hour12: false,
                 hour: '2-digit',
@@ -116,15 +119,15 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 2. 九巴路線：鎖定唯一 seq + 目的地關鍵字雙保險，絕不抓總站車
+    // 2. 九巴路線：鎖定唯一 seq + 提早 1 分鐘機制
     const json = await fetchWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
     if (!json?.data || !Array.isArray(json.data)) return { route: item.route, dest: item.dest, etas: [] };
 
     const valid = json.data.filter((i: any) => {
       const matchSeq = item.seq !== undefined ? (i.seq === item.seq) : true;
       const matchDest = item.matchDest ? (i.dest_tc && i.dest_tc.includes(item.matchDest)) : true;
-      const etaDate = parseEta(i.eta);
-      return matchSeq && matchDest && etaDate && (etaDate.getTime() > now - 45000);
+      const rawDate = parseEta(i.eta);
+      return matchSeq && matchDest && rawDate && (rawDate.getTime() > now - 30000);
     });
 
     valid.sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
@@ -133,11 +136,13 @@ async function getEta(item: any) {
     const etas: string[] = [];
 
     for (const entry of valid) {
-      const etaDate = parseEta(entry.eta);
-      if (!etaDate) continue;
+      const rawDate = parseEta(entry.eta);
+      if (!rawDate) continue;
 
-      const diff = Math.round((etaDate.getTime() - now) / 60000);
-      const timeStr = etaDate.toLocaleTimeString('zh-HK', {
+      // 核心要求：所有到站時間提早 1 分鐘（例如 3分變2分，時間戳 21:50 變 21:49）
+      const adjustedDate = new Date(rawDate.getTime() - 60000);
+      const diff = Math.round((adjustedDate.getTime() - now) / 60000);
+      const timeStr = adjustedDate.toLocaleTimeString('zh-HK', {
         timeZone: 'Asia/Hong_Kong',
         hour12: false,
         hour: '2-digit',
@@ -325,10 +330,10 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (咬死實測序號) -->
+    <!-- 區域一：康栢苑 (603 往平田已更新為第 21 站) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (咬死實測序號) -->
+    <!-- 區域二：廣田邨廣靖樓 -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1230)}
   </svg>
   `;
