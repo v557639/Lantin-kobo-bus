@@ -1,46 +1,44 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (6 條)
+// 康栢苑主力
 const HONG_PAK_PRIMARY = [
-  { route: '16', dest: '旺角(柏景灣)', dir: 'O', stopSeq: 4 },
-  { route: '16X', dest: '旺角(柏景灣)', dir: 'O', stopSeq: 4 },
-  { route: '215X', dest: '九龍站', dir: 'O', stopSeq: 4 },
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', stopSeq: 4 },
-  { route: '603', dest: '平田', dir: 'I', stopSeq: 24 },
+  { route: '16', dest: '旺角(柏景灣)', stopId: 'LT121', matchDest: '旺角' },
+  { route: '16X', dest: '旺角(柏景灣)', stopId: 'LT121', matchDest: '旺角' },
+  { route: '215X', dest: '九龍站', stopId: 'LT121', matchDest: '九龍站' },
+  { route: '216M', dest: '油塘站(循環線)', stopId: 'LT122', matchDest: '油塘' },
+  { route: '603', dest: '平田', stopId: 'LT122', matchDest: '平田' },
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
-// 康栢苑其他 (4 條)
+// 康栢苑其他
 const HONG_PAK_SECONDARY = [
-  { route: '15X', dest: '紅磡站', dir: 'O', stopSeq: 4 },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I', stopSeq: 25 },
-  { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I', stopSeq: 26 },
-  { route: '14H', dest: '順天', dir: 'I', stopSeq: 12 },
+  { route: '15X', dest: '紅磡站', stopId: 'LT121', matchDest: '紅磡' },
+  { route: '214', dest: '長沙灣(甘泉街)', stopId: 'LT122', matchDest: '長沙灣' },
+  { route: '613', dest: '安泰(西)(和泰樓)', stopId: 'LT122', matchDest: '安泰' },
+  { route: '14H', dest: '順天', stopId: 'LT122', matchDest: '順天' },
 ];
 
-// 廣田邨廣靖樓主力 (3 條)
+// 廣田邨廣靖樓主力 (廣田商場 LT514)
 const KWONG_CHING_PRIMARY = [
-  { route: '603', dest: '中環(渡輪碼頭)', dir: 'O', stopSeq: 4 },
-  { route: '603S', dest: '中環(機利文街)', dir: 'O', stopSeq: 4 },
-  { route: '613', dest: '筲箕灣', dir: 'O', stopSeq: 3 },
+  { route: '603', dest: '中環(渡輪碼頭)', stopId: 'LT514', matchDest: '中環' },
+  { route: '603S', dest: '中環(機利文街)', stopId: 'LT514', matchDest: '中環' },
+  { route: '613', dest: '筲箕灣', stopId: 'LT514', matchDest: '筲箕灣' },
 ];
 
-// 廣田邨廣靖樓其他 (4 條)
+// 廣田邨廣靖樓其他
 const KWONG_CHING_SECONDARY = [
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', stopSeq: 3 },
-  { route: '214', dest: '油塘', dir: 'O', stopSeq: 4 },
-  { route: '88X', dest: '火炭(駿洋邨)', dir: 'O', stopSeq: 2 },
-  { route: '14H', dest: '順利(循環線)', dir: 'I', stopSeq: 14 },
+  { route: '216M', dest: '油塘站(循環線)', stopId: 'LT514', matchDest: '油塘' },
+  { route: '214', dest: '油塘', stopId: 'LT514', matchDest: '油塘' },
+  { route: '88X', dest: '火炭(駿洋邨)', stopId: 'LT514', matchDest: '火炭' },
+  { route: '14H', dest: '順利(循環線)', stopId: 'LT514', matchDest: '順利' },
 ];
 
-// 天文台即時天氣 API
 async function getWeather() {
   try {
     const res = await fetch('https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc', {
       cache: 'no-store'
     });
     const data = await res.json();
-    
     const ktTemp = data?.temperature?.data?.find((i: any) => i.place.includes('觀塘') || i.place.includes('啟德'));
     const temp = ktTemp?.value ?? data?.temperature?.data?.[0]?.value ?? '--';
     const iconId = data?.icon?.[0] ?? 50;
@@ -55,51 +53,49 @@ async function getWeather() {
   }
 }
 
-async function fetchWithRetry(url: string, retries = 2): Promise<any> {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok && retries > 0) {
-      await new Promise(r => setTimeout(r, 250));
-      return fetchWithRetry(url, retries - 1);
-    }
-    return await res.json();
-  } catch (err) {
-    if (retries > 0) {
-      await new Promise(r => setTimeout(r, 250));
-      return fetchWithRetry(url, retries - 1);
-    }
-    return null;
-  }
-}
-
-// 嚴格解析時間戳（防止時區偏差）
-function parseEtaDate(etaStr: string): Date | null {
+function parseEta(etaStr: string): Date | null {
   if (!etaStr) return null;
   const d = new Date(etaStr);
   return isNaN(d.getTime()) ? null : d;
 }
 
-async function getEta(item: any) {
-  try {
-    const now = Date.now();
+export async function GET() {
+  const now = new Date();
+  const nowTs = now.getTime();
 
-    // 1. 專線小巴 API
+  // 實時直接提取，拒絕任何中間快取
+  const [stop121, stop122, stop514] = await Promise.all([
+    fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/LT121`, { cache: 'no-store' }).then(r => r.json()).then(j => j?.data || []).catch(() => []),
+    fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/LT122`, { cache: 'no-store' }).then(r => r.json()).then(j => j?.data || []).catch(() => []),
+    fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/LT514`, { cache: 'no-store' }).then(r => r.json()).then(j => j?.data || []).catch(() => []),
+  ]);
+
+  const stopMap: Record<string, any[]> = {
+    LT121: stop121,
+    LT122: stop122,
+    LT514: stop514,
+  };
+
+  const processItem = async (item: any) => {
+    // 專線小巴 63
     if (item.operator === 'gmb') {
       try {
-        const routeRes = await fetchWithRetry(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`);
-        const routeId = routeRes?.data?.[0]?.route_id;
+        const routeRes = await fetch(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`, { cache: 'no-store' });
+        const routeJson = await routeRes.json();
+        const routeId = routeJson?.data?.[0]?.route_id;
 
         if (routeId) {
           const rSeq = item.routeSeq || 1;
           const sSeq = item.stopSeq || 1;
-          const etaJson = await fetchWithRetry(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`);
+          const etaRes = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${routeId}/${rSeq}/${sSeq}`, { cache: 'no-store' });
+          const etaJson = await etaRes.json();
           const list = etaJson?.data?.eta || [];
           
           const etas = list
             .map((i: any) => {
-              const etaDate = parseEtaDate(i.timestamp);
-              if (!etaDate || etaDate.getTime() <= now - 30000) return null;
-              const diff = Math.round((etaDate.getTime() - now) / 60000);
+              const etaDate = parseEta(i.timestamp);
+              if (!etaDate || etaDate.getTime() <= nowTs - 30000) return null;
+              const diff = Math.round((etaDate.getTime() - nowTs) / 60000);
               const timeStr = etaDate.toLocaleTimeString('zh-HK', {
                 timeZone: 'Asia/Hong_Kong',
                 hour12: false,
@@ -118,39 +114,31 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 2. 九巴 API（採用精準比對與自動降級機制）
-    const json = await fetchWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
-    if (!json?.data || !Array.isArray(json.data)) return { route: item.route, dest: item.dest, etas: [] };
-
-    // 優先以方向與指定分站 sequence 比對
-    let valid = json.data.filter((i: any) => {
-      const matchDir = item.dir ? (i.dir === item.dir) : true;
-      const matchSeq = item.stopSeq ? (i.seq === item.stopSeq) : true;
-      const etaDate = parseEtaDate(i.eta);
-      return matchDir && matchSeq && etaDate && (etaDate.getTime() > now - 30000);
+    // 九巴路線：嚴格雙重驗證（路線號 + 目的地前綴關鍵字）
+    const list = stopMap[item.stopId] || [];
+    const valid = list.filter((i: any) => {
+      if (i.route !== item.route) return false;
+      
+      // 關鍵過濾：確保車頭目的地正確，不抓反向車
+      if (item.matchDest && i.dest_tc && !i.dest_tc.includes(item.matchDest)) {
+        return false;
+      }
+      
+      const etaDate = parseEta(i.eta);
+      return etaDate && (etaDate.getTime() > nowTs - 30000);
     });
 
-    // 若指定 seq 暫無班次，放寬為只要方向正確即採納（防九巴臨時調整分站 seq）
-    if (valid.length === 0) {
-      valid = json.data.filter((i: any) => {
-        const matchDir = item.dir ? (i.dir === item.dir) : true;
-        const etaDate = parseEtaDate(i.eta);
-        return matchDir && etaDate && (etaDate.getTime() > now - 30000);
-      });
-    }
-
-    // 依到站時間由近至遠排序
     valid.sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
 
-    // 取前 2 個有效班次，並做去重處理（避免同時間出現）
     const seenTimes = new Set();
     const etas: string[] = [];
 
-    for (const entry of valid) {
-      const etaDate = parseEtaDate(entry.eta);
+    for (const e of valid) {
+      const etaDate = parseEta(e.eta);
       if (!etaDate) continue;
-
-      const diff = Math.round((etaDate.getTime() - now) / 60000);
+      
+      // 依香港標準時間計算剩餘分鐘
+      const diff = Math.round((etaDate.getTime() - nowTs) / 60000);
       const timeStr = etaDate.toLocaleTimeString('zh-HK', {
         timeZone: 'Asia/Hong_Kong',
         hour12: false,
@@ -167,24 +155,8 @@ async function getEta(item: any) {
     }
 
     return { route: item.route, dest: item.dest, etas };
-  } catch {
-    return { route: item.route, dest: item.dest, etas: [] };
-  }
-}
+  };
 
-async function fetchInBatches(items: any[], batchSize = 4) {
-  const results: any[] = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchRes = await Promise.all(batch.map(getEta));
-    results.push(...batchRes);
-  }
-  return results;
-}
-
-export async function GET() {
-  const now = new Date();
-  
   const parts = new Intl.DateTimeFormat('zh-HK', {
     timeZone: 'Asia/Hong_Kong',
     month: 'numeric',
@@ -208,10 +180,10 @@ export async function GET() {
 
   const [weather, hpPri, hpSec, kcPri, kcSec] = await Promise.all([
     getWeather(),
-    fetchInBatches(HONG_PAK_PRIMARY, 4),
-    fetchInBatches(HONG_PAK_SECONDARY, 4),
-    fetchInBatches(KWONG_CHING_PRIMARY, 4),
-    fetchInBatches(KWONG_CHING_SECONDARY, 4)
+    Promise.all(HONG_PAK_PRIMARY.map(processItem)),
+    Promise.all(HONG_PAK_SECONDARY.map(processItem)),
+    Promise.all(KWONG_CHING_PRIMARY.map(processItem)),
+    Promise.all(KWONG_CHING_SECONDARY.map(processItem))
   ]);
 
   let weatherSvg = '';
@@ -339,10 +311,10 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (起點 Y=195) -->
+    <!-- 區域一：康栢苑 -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (起點 Y=1230) -->
+    <!-- 區域二：廣田邨廣靖樓 -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1230)}
   </svg>
   `;
