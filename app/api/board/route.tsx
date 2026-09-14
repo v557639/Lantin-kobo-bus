@@ -1,37 +1,36 @@
 export const dynamic = 'force-dynamic';
 
-// 康栢苑主力 (碧雲道康栢苑龍栢閣對出分站，序號精確對齊)
+// 康栢苑主力 (鎖定 App 1933 實證序號)
 const HONG_PAK_PRIMARY = [
-  { route: '16', dest: '旺角(柏景灣)', dir: 'O', seq: 2 },
-  { route: '16X', dest: '旺角(柏景灣)', dir: 'O', seq: 2 },
-  { route: '215X', dest: '九龍站', dir: 'O', seq: 2 },
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', seq: 2 },
-  { route: '603', dest: '平田', dir: 'I', seq: 24 },
+  { route: '16', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
+  { route: '16X', dest: '旺角(柏景灣)', seq: 2, matchDest: '旺角' },
+  { route: '215X', dest: '九龍站', seq: 2, matchDest: '九龍站' },
+  { route: '216M', dest: '藍田站(循環線)', seq: 18 },
+  { route: '603', dest: '平田', seq: 24, matchDest: '平田' },
   { route: '63', dest: '觀塘(裕民坊)', operator: 'gmb', gmbRegion: 'KLN', gmbRoute: '63', routeSeq: 1, stopSeq: 3 },
 ];
 
 // 康栢苑其他
 const HONG_PAK_SECONDARY = [
-  { route: '15X', dest: '紅磡站', dir: 'O', seq: 2 },
-  { route: '214', dest: '長沙灣(甘泉街)', dir: 'I', seq: 32 },
-  { route: '613', dest: '安泰(西)(和泰樓)', dir: 'I', seq: 26 },
-  { route: '14H', dest: '順天', dir: 'I', seq: 12 },
+  { route: '15X', dest: '紅磡站', seq: 2, matchDest: '紅磡' },
+  { route: '214', dest: '長沙灣(甘泉街)', seq: 5, matchDest: '長沙灣' },
+  { route: '613', dest: '安泰(西)(和泰樓)', seq: 18, matchDest: '安泰' },
+  { route: '14H', dest: '順天', seq: 5 },
 ];
 
-// 廣田邨廣靖樓主力 (App 1933 官方分站序號)
-// 603/603S 廣靖樓實體站位為第 7 站；613 往筲箕灣為第 17 站
+// 廣田邨廣靖樓主力 (鎖定 App 1933 實證序號)
 const KWONG_CHING_PRIMARY = [
-  { route: '603', dest: '中環(渡輪碼頭)', dir: 'O', seq: 7 },
-  { route: '603S', dest: '中環(機利文街)', dir: 'O', seq: 7 },
-  { route: '613', dest: '筲箕灣', dir: 'O', seq: 17 },
+  { route: '603', dest: '中環(渡輪碼頭)', seq: 7, matchDest: '中環' },
+  { route: '603S', dest: '中環(機利文街)', seq: 7, matchDest: '中環' },
+  { route: '613', dest: '筲箕灣', seq: 17, matchDest: '筲箕灣' },
 ];
 
 // 廣田邨廣靖樓其他
 const KWONG_CHING_SECONDARY = [
-  { route: '216M', dest: '油塘站(循環線)', dir: 'O', seq: 6 },
-  { route: '214', dest: '油塘', dir: 'O', seq: 4 },
-  { route: '88X', dest: '火炭(駿洋邨)', dir: 'O', seq: 7 },
-  { route: '14H', dest: '順利(循環線)', dir: 'I', seq: 39 },
+  { route: '216M', dest: '藍田站(循環線)', seq: 9 },
+  { route: '214', dest: '油塘', seq: 32, matchDest: '油塘' },
+  { route: '88X', dest: '穗禾苑', seq: 7, matchDest: '穗禾苑' },
+  { route: '14H', dest: '順利(循環線)', seq: 39 },
 ];
 
 // 天文台即時天氣 API
@@ -82,7 +81,7 @@ async function getEta(item: any) {
   try {
     const now = Date.now();
 
-    // 1. 綠色專線小巴 63 號
+    // 1. 專線小巴 63
     if (item.operator === 'gmb') {
       try {
         const routeRes = await fetchWithRetry(`https://data.etagmb.gov.hk/route/${item.gmbRegion}/${item.gmbRoute}`);
@@ -117,19 +116,17 @@ async function getEta(item: any) {
       return { route: item.route, dest: item.dest, etas: [], isGmb: true };
     }
 
-    // 2. 九巴路線：嚴格鎖定指定分站序號 (seq)，絕不容許降級為總站車！
+    // 2. 九巴路線：鎖定唯一 seq + 目的地關鍵字雙保險，絕不抓總站車
     const json = await fetchWithRetry(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${item.route}/1`);
     if (!json?.data || !Array.isArray(json.data)) return { route: item.route, dest: item.dest, etas: [] };
 
-    // 鐵血過濾：方向必須吻合，分站 seq 必須精確吻合
     const valid = json.data.filter((i: any) => {
-      const matchDir = item.dir ? (i.dir === item.dir) : true;
-      const matchSeq = item.seq ? (i.seq === item.seq) : true;
+      const matchSeq = item.seq !== undefined ? (i.seq === item.seq) : true;
+      const matchDest = item.matchDest ? (i.dest_tc && i.dest_tc.includes(item.matchDest)) : true;
       const etaDate = parseEta(i.eta);
-      return matchDir && matchSeq && etaDate && (etaDate.getTime() > now - 45000);
+      return matchSeq && matchDest && etaDate && (etaDate.getTime() > now - 45000);
     });
 
-    // 依到站時間由近至遠排序
     valid.sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
 
     const seenTimes = new Set();
@@ -161,7 +158,6 @@ async function getEta(item: any) {
   }
 }
 
-// 分批提取防 429
 async function fetchInBatches(items: any[], batchSize = 4) {
   const results: any[] = [];
   for (let i = 0; i < items.length; i += batchSize) {
@@ -329,10 +325,10 @@ export async function GET() {
       <line x1="50" y1="165" x2="1390" y2="165" stroke="#000000" stroke-width="8" />
     </g>
 
-    <!-- 區域一：康栢苑 (咬死康栢苑 seq: 2) -->
+    <!-- 區域一：康栢苑 (咬死實測序號) -->
     ${renderArea('康栢苑', 200, hpPri, hpSec, 195)}
 
-    <!-- 區域二：廣田邨廣靖樓 (咬死廣靖樓官方 seq: 7) -->
+    <!-- 區域二：廣田邨廣靖樓 (咬死實測序號) -->
     ${renderArea('廣田邨廣靖樓', 320, kcPri, kcSec, 1230)}
   </svg>
   `;
